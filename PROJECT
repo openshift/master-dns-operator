@@ -1,0 +1,3 @@
+version: "1"
+domain: operator.openshift.io
+repo: github.com/openshift/master-dns-operator

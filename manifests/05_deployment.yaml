@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: master-dns-operator
+  namespace: openshift-master-dns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: master-dns-operator
+  template:
+    metadata:
+      labels:
+        name: master-dns-operator
+    spec:
+      serviceAccountName: master-dns-operator
+      containers:
+        - name: master-dns-operator
+          image: quay.io/csrwng/master-dns-operator:latest
+          ports:
+          - containerPort: 60000
+            name: metrics
+          command:
+          - /manager
+          imagePullPolicy: Always
+          env:
+            - name: WATCH_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: "master-dns-operator"

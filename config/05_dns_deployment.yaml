@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: external-dns
+  namespace: openshift-master-dns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: external-dns
+  template:
+    metadata:
+      labels:
+        name: external-dns
+    spec:
+      strategy:
+        type: Recreate
+      serviceAccountName: external-dns
+      containers:
+      - name: external-dns
+        image: quay.io/csrwng/external-dns:latest
+        args:
+        - --source=crd
+        - --crd-source-apiversion=masterdns.operator.openshift.io/v1alpha1
+        - --crd-source-kind=DNSEndpoint
+        - --registry=noop
+        - --policy=upsert-only

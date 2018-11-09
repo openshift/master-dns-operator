@@ -1,0 +1,6 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: openshift-master-dns
+  labels:
+    openshift.io/run-level: "0"

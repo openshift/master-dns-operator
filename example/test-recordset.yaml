@@ -1,0 +1,11 @@
+apiVersion: masterdns.operator.openshift.io/v1alpha1
+kind: DNSRecordSet
+metadata:
+  name: masters
+spec:
+  endpoints:
+  - dnsName: cewong-demo-etcd-10.new-installer.openshift.com
+    recordTTL: 180
+    recordType: A
+    targets:
+    - 10.0.12.152
