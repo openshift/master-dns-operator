@@ -11,6 +11,7 @@ required = [
   "sigs.k8s.io/controller-tools/cmd/controller-gen",
   "github.com/jteeuwen/go-bindata",
   "github.com/kubernetes-incubator/external-dns",
+  "github.com/operator-framework/operator-sdk/pkg/test",
 ]
 
 [[override]]
@@ -35,6 +36,10 @@ required = [
 
 [[override]]
   name = "k8s.io/client-go"
+  version = "kubernetes-1.11.0"
+
+[[override]]
+  name = "k8s.io/apiserver"
   version = "kubernetes-1.11.0"
 
 [[override]]
