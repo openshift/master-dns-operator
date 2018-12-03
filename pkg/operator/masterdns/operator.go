@@ -2,16 +2,20 @@ package masterdns
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/dynamic"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -25,21 +29,26 @@ import (
 	clusterclientset "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
 	clusterinformers "sigs.k8s.io/cluster-api/pkg/client/informers_generated/externalversions"
 
+	operatorv1 "github.com/openshift/api/operator/v1"
 	"github.com/openshift/library-go/pkg/operator/events"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
+	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 	"github.com/openshift/library-go/pkg/operator/resource/resourceread"
-	"github.com/openshift/library-go/pkg/operator/v1alpha1helpers"
+	"github.com/openshift/library-go/pkg/operator/v1helpers"
 
 	masterdnsv1 "github.com/openshift/master-dns-operator/pkg/apis/masterdns/v1alpha1"
 	"github.com/openshift/master-dns-operator/pkg/operator/assets"
 )
 
 const (
-	clusterAPINamespace = "openshift-cluster-api"
+	clusterAPINamespace      = "openshift-cluster-api"
+	operatorNamespace        = "openshift-master-dns-operator"
+	workloadFailingCondition = "WorkloadFailing"
 )
 
 var (
-	configName = types.NamespacedName{Name: "instance", Namespace: ""}
+	configName      = types.NamespacedName{Name: "instance", Namespace: ""}
+	requeueInterval = 10 * time.Second
 )
 
 // Add creates a new MasterDNS Operator and adds it to the Manager. The Manager will set fields on the Controller
@@ -51,7 +60,10 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileMasterDNS{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	return &ReconcileMasterDNS{
+		client: mgr.GetClient(),
+		scheme: mgr.GetScheme(),
+	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -61,21 +73,28 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	if err != nil {
 		return err
 	}
-	v1alpha1helpers.EnsureOperatorConfigExists(
+	v1helpers.EnsureOperatorConfigExists(
 		dynamicClient,
 		assets.MustAsset("config/operator-config.yaml"),
 		schema.GroupVersionResource{Group: masterdnsv1.SchemeGroupVersion.Group, Version: "v1alpha1", Resource: "masterdnsoperatorconfigs"},
-		v1alpha1helpers.GetImageEnv,
 	)
+	mdnsReconciler := r.(*ReconcileMasterDNS)
 
-	r.(*ReconcileMasterDNS).kubeClient, err = kubeclient.NewForConfig(mgr.GetConfig())
+	mdnsReconciler.imagePullSpec = os.Getenv("IMAGE")
+	if len(mdnsReconciler.imagePullSpec) == 0 {
+		return fmt.Errorf("no image specified, specify one via the IMAGE env var")
+	}
+
+	mdnsReconciler.kubeClient, err = kubeclient.NewForConfig(mgr.GetConfig())
 	if err != nil {
 		return err
 	}
-	r.(*ReconcileMasterDNS).apiExtClient, err = apiextclient.NewForConfig(mgr.GetConfig())
+	mdnsReconciler.apiExtClient, err = apiextclient.NewForConfig(mgr.GetConfig())
 	if err != nil {
 		return err
 	}
+
+	mdnsReconciler.eventRecorder = setupEventRecorder(mdnsReconciler.kubeClient)
 
 	// Create a new controller
 	c, err := controller.New("master-dns-operator", mgr, controller.Options{Reconciler: r})
@@ -112,10 +131,12 @@ var _ reconcile.Reconciler = &ReconcileMasterDNS{}
 type ReconcileMasterDNS struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client       client.Client
-	scheme       *runtime.Scheme
-	kubeClient   kubeclient.Interface
-	apiExtClient apiextclient.Interface
+	client        client.Client
+	scheme        *runtime.Scheme
+	kubeClient    kubeclient.Interface
+	apiExtClient  apiextclient.Interface
+	eventRecorder events.Recorder
+	imagePullSpec string
 }
 
 // Reconcile reads that state of the cluster for a MasterDNSOperatorConfig object and makes changes based on the state read
@@ -140,72 +161,79 @@ func (r *ReconcileMasterDNS) Reconcile(request reconcile.Request) (reconcile.Res
 	}
 
 	// Ensure that External DNS is deployed
-	err = r.ensureExternalDNS(operatorConfig)
+	return r.syncExternalDNS(operatorConfig)
+}
+
+func (r *ReconcileMasterDNS) syncExternalDNS(config *masterdnsv1.MasterDNSOperatorConfig) (reconcile.Result, error) {
+
+	errors := []error{}
+
+	crd := resourceread.ReadCustomResourceDefinitionV1Beta1OrDie(assets.MustAsset("config/crd.yaml"))
+	_, _, err := resourceapply.ApplyCustomResourceDefinition(r.apiExtClient.ApiextensionsV1beta1(), r.eventRecorder, crd)
+
+	results := resourceapply.ApplyDirectly(r.kubeClient, r.eventRecorder, assets.Asset,
+		"config/role.yaml",
+		"config/binding.yaml",
+		"config/sa.yaml",
+	)
+	resourcesThatForceRedeployment := sets.NewString("config/sa.yaml")
+	forceDeployment := config.Generation != config.Status.ObservedGeneration
+
+	for _, currResult := range results {
+		if currResult.Error != nil {
+			log.WithError(currResult.Error).WithField("file", currResult.File).Error("Apply error")
+			errors = append(errors, fmt.Errorf("%q (%T): %v", currResult.File, currResult.Type, currResult.Error))
+			continue
+		}
+
+		if currResult.Changed && resourcesThatForceRedeployment.Has(currResult.File) {
+			forceDeployment = true
+		}
+	}
+	actualDeployment, _, err := r.syncExternalDNSDeployment(config, forceDeployment)
 	if err != nil {
-		log.WithError(err).Error("Cannot ensure external DNS deployment is created")
+		errors = append(errors, fmt.Errorf("%q: %v", "deployments", err))
+	}
+
+	config.Status.ObservedGeneration = config.ObjectMeta.Generation
+	resourcemerge.SetDeploymentGeneration(&config.Status.Generations, actualDeployment)
+	if len(errors) > 0 {
+		message := ""
+		for _, err := range errors {
+			message = message + err.Error() + "\n"
+		}
+		v1helpers.SetOperatorCondition(&config.Status.Conditions, operatorv1.OperatorCondition{
+			Type:    workloadFailingCondition,
+			Status:  operatorv1.ConditionTrue,
+			Message: message,
+			Reason:  "SyncError",
+		})
+	} else {
+		v1helpers.SetOperatorCondition(&config.Status.Conditions, operatorv1.OperatorCondition{
+			Type:   workloadFailingCondition,
+			Status: operatorv1.ConditionFalse,
+		})
+	}
+	if err := r.client.Status().Update(context.TODO(), config); err != nil {
 		return reconcile.Result{}, err
 	}
 
+	if len(errors) > 0 {
+		return reconcile.Result{Requeue: true, RequeueAfter: requeueInterval}, nil
+	}
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileMasterDNS) ensureExternalDNS(config *masterdnsv1.MasterDNSOperatorConfig) error {
-	eventsClient := r.kubeClient.CoreV1().Events(config.Namespace)
-	recorder := events.NewRecorder(
-		eventsClient,
-		"openshift-master-dns-operator",
-		&corev1.ObjectReference{
-			Name:      config.Name,
-			Namespace: config.Namespace})
-
-	// Apply CRD
-	crd := resourceread.ReadCustomResourceDefinitionV1Beta1OrDie(assets.MustAsset("config/01_dns_crd.yaml"))
-	_, crdModified, err := resourceapply.ApplyCustomResourceDefinition(r.apiExtClient.ApiextensionsV1beta1(), recorder, crd)
-	if err != nil {
-		log.WithError(err).Error("error applying DNS crd")
-		return err
-	}
-
-	// Apply Cluster Role
-	role := resourceread.ReadClusterRoleV1OrDie(assets.MustAsset("config/02_dns_rbac.yaml"))
-	_, clusterRoleModified, err := resourceapply.ApplyClusterRole(r.kubeClient.RbacV1(), recorder, role)
-	if err != nil {
-		log.WithError(err).Error("error appplying DNS cluster role")
-		return err
-	}
-
-	// Apply Service Account
-	sa := resourceread.ReadServiceAccountV1OrDie(assets.MustAsset("config/03_dns_sa.yaml"))
-	_, saModified, err := resourceapply.ApplyServiceAccount(r.kubeClient.CoreV1(), recorder, sa)
-	if err != nil {
-		log.WithError(err).Error("error appplying DNS service account")
-		return err
-	}
-
-	// Apply Cluster Role Binding
-	binding := resourceread.ReadClusterRoleBindingV1OrDie(assets.MustAsset("config/04_dns_binding.yaml"))
-	_, roleBindingModified, err := resourceapply.ApplyClusterRoleBinding(r.kubeClient.RbacV1(), recorder, binding)
-	if err != nil {
-		log.WithError(err).Error("error appplying DNS cluster role binding")
-		return err
-	}
-
-	forceDeployment := config.Generation != config.Status.ObservedGeneration
-	if crdModified || clusterRoleModified || saModified || roleBindingModified {
-		forceDeployment = true
-	}
-
-	_ = forceDeployment
-
-	// Apply External DNS deployment
-	/*
-		deployment := resourceread.ReadDeploymentV1OrDie(assets.MustAsset("config/04_dns_deployment.yaml"))
-		deployment.Spec.Template.Spec.Containers[0].Image = config.Spec.ImagePullSpec
-		deployment.Spec.Template.Spec.Containers[0].ImagePullPolicy = corev1.PullPolicy(config.Spec.ImagePullPolicy)
-		_, _, err = resourceapply.ApplyDeployment(r.kubeClient.AppsV1().Deployments(config.Namespace), recorder, deployment)
-	*/
-
-	return nil
+func (r *ReconcileMasterDNS) syncExternalDNSDeployment(config *masterdnsv1.MasterDNSOperatorConfig, forceDeployment bool) (*appsv1.Deployment, bool, error) {
+	deployment := resourceread.ReadDeploymentV1OrDie(assets.MustAsset("config/deployment.yaml"))
+	deployment.Spec.Template.Spec.Containers[0].Image = r.imagePullSpec
+	deployment.Spec.Template.Spec.Containers[0].ImagePullPolicy = corev1.PullAlways
+	return resourceapply.ApplyDeployment(
+		r.kubeClient.AppsV1(),
+		r.eventRecorder,
+		deployment,
+		resourcemerge.ExpectedDeploymentGeneration(deployment, config.Status.Generations),
+		forceDeployment)
 }
 
 type configHandler func(handler.MapObject) []reconcile.Request
@@ -230,4 +258,37 @@ func (r *informerRunnable) Start(stopch <-chan struct{}) error {
 	r.informer.Run(stopch)
 	cache.WaitForCacheSync(stopch, r.informer.HasSynced)
 	return nil
+}
+
+func getLogRecorder() events.Recorder {
+	return &logRecorder{}
+}
+
+type logRecorder struct{}
+
+func (logRecorder) Event(reason, message string) {
+	log.WithField("reason", reason).Info(message)
+}
+
+func (logRecorder) Eventf(reason, messageFmt string, args ...interface{}) {
+	log.WithField("reason", reason).Infof(messageFmt, args...)
+}
+
+func (logRecorder) Warning(reason, message string) {
+	log.WithField("reason", reason).Warning(message)
+}
+
+func (logRecorder) Warningf(reason, messageFmt string, args ...interface{}) {
+	log.WithField("reason", reason).Warningf(messageFmt, args...)
+}
+
+func setupEventRecorder(kubeClient kubeclient.Interface) events.Recorder {
+	controllerRef, err := events.GetControllerReferenceForCurrentPod(kubeClient, operatorNamespace, nil)
+	if err != nil {
+		log.WithError(err).Warning("Cannot determine pod name for event recorder. Using logger.")
+		return getLogRecorder()
+	}
+
+	eventsClient := kubeClient.CoreV1().Events(controllerRef.Namespace)
+	return events.NewRecorder(eventsClient, "openshift-master-dns-operator", controllerRef)
 }

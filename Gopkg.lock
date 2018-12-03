@@ -727,8 +727,8 @@
   revision = "e7dc90658844828191986cb07f3e44eeeba0b03a"
 
 [[projects]]
-  branch = "crd_apply"
-  digest = "1:07af3451d8916d1d4b4f8b80095aaff5e950b5df08020350ff690e4c8dbe4be7"
+  branch = "master"
+  digest = "1:dac9721ea64563f09a3e709b0b1660c2b94b1436355a90ab72f91225ce5d26ac"
   name = "github.com/openshift/library-go"
   packages = [
     "pkg/operator/events",
@@ -738,8 +738,7 @@
     "pkg/operator/v1alpha1helpers",
   ]
   pruneopts = "NT"
-  revision = "f7454394513f9cc523c71ae27137fd14526e8295"
-  source = "https://github.com/csrwng/library-go.git"
+  revision = "c366f9afb353fdeece3661fc67c1ca45e30912f0"
 
 [[projects]]
   branch = "master"
@@ -747,7 +746,9 @@
   name = "github.com/operator-framework/operator-sdk"
   packages = [
     "internal/util/k8sutil",
+    "pkg/k8sutil",
     "pkg/test",
+    "version",
   ]
   pruneopts = "NT"
   revision = "933b72f8b3ddadf10b9a0e66b5e6e5751a2feaa4"
@@ -1440,6 +1441,7 @@
   digest = "1:0525013c1c7266ea5ee6d3026fc8ce8b516643e459cd519b4787ae7dac28d00e"
   name = "sigs.k8s.io/cluster-api"
   packages = [
+    "pkg/apis",
     "pkg/apis/cluster/common",
     "pkg/apis/cluster/v1alpha1",
     "pkg/client/clientset_generated/clientset",
@@ -1462,6 +1464,7 @@
     "pkg/cache/internal",
     "pkg/client",
     "pkg/client/apiutil",
+    "pkg/client/config",
     "pkg/controller",
     "pkg/event",
     "pkg/handler",
@@ -1476,6 +1479,7 @@
     "pkg/runtime/inject",
     "pkg/runtime/log",
     "pkg/runtime/scheme",
+    "pkg/runtime/signals",
     "pkg/source",
     "pkg/source/internal",
     "pkg/webhook/admission",
@@ -1508,12 +1512,15 @@
   input-imports = [
     "github.com/jteeuwen/go-bindata",
     "github.com/kubernetes-incubator/external-dns",
-    "github.com/openshift/api/operator/v1alpha1",
+    "github.com/openshift/api/operator/v1",
     "github.com/openshift/library-go/pkg/operator/events",
     "github.com/openshift/library-go/pkg/operator/resource/resourceapply",
+    "github.com/openshift/library-go/pkg/operator/resource/resourcemerge",
     "github.com/openshift/library-go/pkg/operator/resource/resourceread",
     "github.com/openshift/library-go/pkg/operator/v1alpha1helpers",
+    "github.com/operator-framework/operator-sdk/pkg/k8sutil",
     "github.com/operator-framework/operator-sdk/pkg/test",
+    "github.com/operator-framework/operator-sdk/version",
     "github.com/sirupsen/logrus",
     "github.com/spf13/cobra",
     "github.com/spf13/pflag",
@@ -1524,10 +1531,12 @@
     "k8s.io/apimachinery/pkg/runtime",
     "k8s.io/apimachinery/pkg/runtime/schema",
     "k8s.io/apimachinery/pkg/types",
+    "k8s.io/apimachinery/pkg/util/errors",
     "k8s.io/apiserver/pkg/util/flag",
     "k8s.io/apiserver/pkg/util/logs",
     "k8s.io/client-go/dynamic",
     "k8s.io/client-go/kubernetes",
+    "k8s.io/client-go/plugin/pkg/client/auth/gcp",
     "k8s.io/client-go/tools/cache",
     "k8s.io/code-generator/cmd/client-gen",
     "k8s.io/code-generator/cmd/conversion-gen",
@@ -1537,14 +1546,17 @@
     "k8s.io/code-generator/cmd/lister-gen",
     "k8s.io/code-generator/cmd/openapi-gen",
     "k8s.io/gengo/args",
+    "sigs.k8s.io/cluster-api/pkg/apis",
     "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset",
     "sigs.k8s.io/cluster-api/pkg/client/informers_generated/externalversions",
     "sigs.k8s.io/controller-runtime/pkg/client",
+    "sigs.k8s.io/controller-runtime/pkg/client/config",
     "sigs.k8s.io/controller-runtime/pkg/controller",
     "sigs.k8s.io/controller-runtime/pkg/handler",
     "sigs.k8s.io/controller-runtime/pkg/manager",
     "sigs.k8s.io/controller-runtime/pkg/reconcile",
     "sigs.k8s.io/controller-runtime/pkg/runtime/scheme",
+    "sigs.k8s.io/controller-runtime/pkg/runtime/signals",
     "sigs.k8s.io/controller-runtime/pkg/source",
     "sigs.k8s.io/controller-tools/cmd/controller-gen",
   ]

@@ -32,8 +32,15 @@ external-dns:
 	go build -o bin/external-dns ./vendor/github.com/kubernetes-incubator/external-dns/
 
 .PHONY: generate
-generate: 
+generate: generate-go generate-bindata
+
+.PHONY: generate-go
+generate-go:
 	go generate $(GO_PKGS)
+
+.PHONY: generate-bindata
+generate-bindata:
+	hack/update-bindata.sh
 
 .PHONY: image
 image:  generate
