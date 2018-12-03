@@ -1,7 +1,7 @@
 package v1alpha1
 
 import (
-	operatorsv1 "github.com/openshift/api/operator/v1alpha1"
+	operatorsv1 "github.com/openshift/api/operator/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

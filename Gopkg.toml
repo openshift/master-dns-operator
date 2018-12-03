@@ -46,13 +46,6 @@ required = [
   name = "sigs.k8s.io/controller-runtime"
   version = "v0.1.4"
 
-# TODO: Remove this override when fix to EnsureOperatorConfigExists merges
-[[override]]
-  name = "github.com/openshift/library-go"
-  branch = "crd_apply"
-  source = "https://github.com/csrwng/library-go.git"
-  
-
 [[constraint]]
   name = "github.com/operator-framework/operator-sdk"
   branch = "master"
