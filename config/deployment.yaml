@@ -16,6 +16,7 @@ spec:
       strategy:
         type: Recreate
       serviceAccountName: external-dns
+      priorityClassName: system-cluster-critical
       containers:
       - name: external-dns
         image: quay.io/openshift/external-dns-operator:latest

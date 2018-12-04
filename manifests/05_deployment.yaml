@@ -13,6 +13,7 @@ spec:
       labels:
         name: master-dns-operator
     spec:
+      priorityClassName: system-cluster-critical
       serviceAccountName: master-dns-operator
       containers:
         - name: master-dns-operator
