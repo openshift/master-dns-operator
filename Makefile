@@ -32,7 +32,7 @@ external-dns:
 	go build -o bin/external-dns ./vendor/github.com/kubernetes-incubator/external-dns/
 
 .PHONY: generate
-generate: generate-go generate-bindata
+generate: generate-go generate-crds generate-rbac generate-bindata
 
 .PHONY: generate-go
 generate-go:
@@ -41,6 +41,18 @@ generate-go:
 .PHONY: generate-bindata
 generate-bindata:
 	hack/update-bindata.sh
+
+.PHONY: generate-crds
+generate-crds:
+	hack/update-crds.sh
+
+.PHONY: generate-rbac
+generate-rbac:
+	hack/update-rbac.sh
+
+.PHONY: run
+run:
+	WATCH_NAMESPACE=openshift-master-dns IMAGE=quay.io/csrwng/master-dns-operator:latest ./bin/manager
 
 .PHONY: image
 image:  generate

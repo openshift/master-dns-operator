@@ -46,6 +46,13 @@ required = [
   name = "sigs.k8s.io/controller-runtime"
   version = "v0.1.4"
 
+# Carry this until it makes it upstream
+[[override]]
+  name = "github.com/kubernetes-incubator/external-dns"
+  source = "github.com/csrwng/external-dns"
+  branch = "zone_tag_filter"
+  
+
 [[constraint]]
   name = "github.com/operator-framework/operator-sdk"
   branch = "master"

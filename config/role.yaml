@@ -7,5 +7,5 @@ rules:
   resources: ["services"]
   verbs: ["get","watch","list"]
 - apiGroups: ["masterdns.operator.openshift.io"]
-  resources: ["dnsendpoints"]
+  resources: ["dnsendpoints", "dnsendpoints/status"]
   verbs: ["get","list","watch","create","update","patch","delete"]

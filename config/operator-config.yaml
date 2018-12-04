@@ -4,10 +4,5 @@ metadata:
   name: instance
 spec:
   managementState: Managed
-  imagePullSpec: quay.io/csrwng/openshift-master-dns:latest
-  imagePullPolicy: Always
-  version: "4.0"
-  logging:
-    level: 4
-    vmodule: ""
   automaticUpdates: true
+  logLevel: info
