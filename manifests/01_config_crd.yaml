@@ -1,16 +1,18 @@
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
+  creationTimestamp: null
   labels:
     controller-tools.k8s.io: "1.0"
   name: masterdnsoperatorconfigs.masterdns.operator.openshift.io
 spec:
-  version: v1alpha1
   group: masterdns.operator.openshift.io
   names:
     kind: MasterDNSOperatorConfig
     plural: masterdnsoperatorconfigs
   scope: Cluster
+  subresources:
+    status: {}
   validation:
     openAPIV3Schema:
       properties:
@@ -22,30 +24,15 @@ spec:
           type: object
         spec:
           properties:
-            imagePullPolicy:
+            automaticUpdates:
+              type: boolean
+            logLevel:
               type: string
-            imagePullSpec:
-              type: string
-            logging:
-              properties:
-                level:
-                  format: int64
-                  type: integer
-                vmodule:
-                  type: string
-              required:
-              - level
-              - vmodule
-              type: object
             managementState:
-              type: string
-            version:
               type: string
           required:
           - managementState
-          - imagePullSpec
-          - imagePullPolicy
-          - version
+          - automaticUpdates
           type: object
         status:
           properties:
@@ -68,97 +55,48 @@ spec:
                 - status
                 type: object
               type: array
-            currentVersionAvailability:
-              properties:
-                errors:
-                  items:
+            generations:
+              items:
+                properties:
+                  group:
                     type: string
-                  type: array
-                generations:
-                  items:
-                    properties:
-                      group:
-                        type: string
-                      lastGeneration:
-                        format: int64
-                        type: integer
-                      name:
-                        type: string
-                      namespace:
-                        type: string
-                      resource:
-                        type: string
-                    required:
-                    - group
-                    - resource
-                    - namespace
-                    - name
-                    - lastGeneration
-                    type: object
-                  type: array
-                readyReplicas:
-                  format: int32
-                  type: integer
-                updatedReplicas:
-                  format: int32
-                  type: integer
-                version:
-                  type: string
-              required:
-              - version
-              - updatedReplicas
-              - readyReplicas
-              - errors
-              - generations
-              type: object
+                  hash:
+                    type: string
+                  lastGeneration:
+                    format: int64
+                    type: integer
+                  name:
+                    type: string
+                  namespace:
+                    type: string
+                  resource:
+                    type: string
+                required:
+                - group
+                - resource
+                - namespace
+                - name
+                - lastGeneration
+                - hash
+                type: object
+              type: array
             observedGeneration:
               format: int64
               type: integer
-            state:
+            readyReplicas:
+              format: int32
+              type: integer
+            version:
               type: string
-            targetVersionAvailability:
-              properties:
-                errors:
-                  items:
-                    type: string
-                  type: array
-                generations:
-                  items:
-                    properties:
-                      group:
-                        type: string
-                      lastGeneration:
-                        format: int64
-                        type: integer
-                      name:
-                        type: string
-                      namespace:
-                        type: string
-                      resource:
-                        type: string
-                    required:
-                    - group
-                    - resource
-                    - namespace
-                    - name
-                    - lastGeneration
-                    type: object
-                  type: array
-                readyReplicas:
-                  format: int32
-                  type: integer
-                updatedReplicas:
-                  format: int32
-                  type: integer
-                version:
-                  type: string
-              required:
-              - version
-              - updatedReplicas
-              - readyReplicas
-              - errors
-              - generations
-              type: object
-            taskSummary:
-              type: string
+          required:
+          - version
+          - readyReplicas
+          - generations
           type: object
+  version: v1alpha1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

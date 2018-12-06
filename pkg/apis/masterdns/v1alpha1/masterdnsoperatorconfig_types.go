@@ -7,10 +7,15 @@ import (
 
 // MasterDNSOperatorConfigSpec defines the desired state of MasterDNSOperatorConfig
 type MasterDNSOperatorConfigSpec struct {
-	operatorsv1.OperatorSpec `json:",inline"`
+	// managementState indicates whether and how the operator should manage the component
+	ManagementState operatorsv1.ManagementState `json:"managementState"`
 
-	// AutomaticUpdates if true indicates that the DNS entries should be automatically
-	// updated based on IP address of Machine object
+	// logLevel is the level of logging for the external-dns controller
+	// Valid values: debug, info, warning, error, fatal
+	LogLevel string `json:"logLevel,omitempty"`
+
+	// automaticUpdates indicates that the DNS entries should be automatically
+	// updated based on IP address of master Machine resources
 	AutomaticUpdates bool `json:"automaticUpdates"`
 }
 
@@ -23,6 +28,8 @@ type MasterDNSOperatorConfigStatus struct {
 
 // MasterDNSOperatorConfig is the Schema for the masterdnsoperatorconfigs API
 // +k8s:openapi-gen=true
+// +kubebuilder:subresource:status
+// +genclient:nonNamespaced
 type MasterDNSOperatorConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

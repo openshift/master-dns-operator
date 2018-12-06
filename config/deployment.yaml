@@ -28,4 +28,4 @@ spec:
         - --crd-source-kind=DNSEndpoint
         - --registry=noop
         - --policy=upsert-only
-        - --provider=aws
+        - --namespace=openshift-master-dns
