@@ -365,7 +365,7 @@ func (r *ReconcileMasterDNS) syncDNSEndpointResource(installConfig *installertyp
 
 		endpoints = append(endpoints, endpoint)
 	}
-	sort.Sort(EndpointsByName(endpoints))
+	sort.Sort(endpointsByName(endpoints))
 
 	dnsEndpoint := &masterdnsv1.DNSEndpoint{}
 	err = r.client.Get(context.TODO(), endpointsName, dnsEndpoint)
@@ -526,8 +526,8 @@ func getInternalIP(machine *clusterv1.Machine) string {
 	return ""
 }
 
-type EndpointsByName []*masterdnsv1.Endpoint
+type endpointsByName []*masterdnsv1.Endpoint
 
-func (s EndpointsByName) Len() int           { return len(s) }
-func (s EndpointsByName) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-func (s EndpointsByName) Less(i, j int) bool { return s[i].DNSName < s[j].DNSName }
+func (s endpointsByName) Len() int           { return len(s) }
+func (s endpointsByName) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s endpointsByName) Less(i, j int) bool { return s[i].DNSName < s[j].DNSName }
