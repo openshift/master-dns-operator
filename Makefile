@@ -2,11 +2,11 @@ GO_PKGS = ./cmd/... ./pkg/...
 IMAGE_BUILD_CMD = imagebuilder
 IMAGE = "openshift/master-dns-operator:latest"
 
-all: fmt vet lint build
+all: generate fmt vet lint build
 
 .PHONY: lint
 lint:
-	golint $(GO_PKGS)
+	golint --set_exit_status $(GO_PKGS)
 
 .PHONY: fmt
 fmt:
@@ -31,12 +31,27 @@ manager: generate
 external-dns:
 	go build -o bin/external-dns ./vendor/github.com/kubernetes-incubator/external-dns/
 
+.PHONY: test-unit
+test-unit:
+	go test ./pkg/... ./cmd/... -coverprofile cover.out
+
+.PHONY: verify
+verify: verify-bindata verify-gofmt lint vet
+
+.PHONY: verify-gofmt
+verify-gofmt:
+	hack/verify-gofmt.sh
+
 .PHONY: generate
 generate: generate-go generate-crds generate-rbac generate-bindata
 
 .PHONY: generate-go
 generate-go:
 	go generate $(GO_PKGS)
+
+.PHONY: verify-bindata
+verify-bindata:
+	hack/verify-bindata.sh
 
 .PHONY: generate-bindata
 generate-bindata:

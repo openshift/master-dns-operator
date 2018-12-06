@@ -30,7 +30,8 @@ import (
 )
 
 func main() {
-	rand.Seed(time.Now().UTC().UnixNano())
+	rand.
+		Seed(time.Now().UTC().UnixNano())
 
 	pflag.CommandLine.SetNormalizeFunc(utilflag.WordSepNormalizeFunc)
 	pflag.CommandLine.AddGoFlagSet(goflag.CommandLine)
@@ -47,6 +48,7 @@ func main() {
 
 const defaultLogLevel = "info"
 
+// NewOperatorManagerCommand returns a command for the Manager
 func NewOperatorManagerCommand() *cobra.Command {
 	var logLevel string
 	cmd := &cobra.Command{
