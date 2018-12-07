@@ -511,7 +511,7 @@ func getProviderArgs(config *installertypes.InstallConfig) []string {
 			"--provider=aws",
 			fmt.Sprintf("--domain-filter=%s", config.BaseDomain),
 			"--aws-zone-type=private",
-			fmt.Sprintf("--aws-zone-tags=tectonicClusterID=%s", config.ClusterID),
+			fmt.Sprintf("--aws-zone-tags=openshiftClusterID=%s", config.ClusterID),
 		}
 	}
 	return nil
