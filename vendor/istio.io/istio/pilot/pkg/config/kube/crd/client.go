@@ -286,7 +286,10 @@ func (rc *restClient) registerResources() error {
 	})
 
 	if errPoll != nil {
-		log.Error("failed to verify CRD creation")
+		deleteErr := rc.deregisterResources()
+		if deleteErr != nil {
+			return multierror.Append(errPoll, deleteErr)
+		}
 		return errPoll
 	}
 

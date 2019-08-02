@@ -471,8 +471,15 @@ func buildGatewayNetworkFiltersFromTCPRoutes(node *model.Proxy, env *model.Envir
 		for _, tcp := range vsvc.Tcp {
 			if l4MultiMatch(tcp.Match, server, gatewaysForWorkload) {
 				upstream = tcp.Route[0].Destination // We pick first destination because TCP has no weighted cluster
-				clusterName := istio_route.GetDestinationCluster(upstream, push.ServiceByHostname[model.Hostname(upstream.Host)], int(server.Port.Number))
-				return buildOutboundNetworkFilters(env, node, clusterName, "", port)
+				destSvc, present := push.ServiceByHostname[model.Hostname(upstream.Host)]
+				if !present {
+					log.Debugf("service %q does not exist in the registry", upstream.Host)
+					return nil
+				}
+
+				return buildOutboundNetworkFilters(node,
+					istio_route.GetDestinationCluster(upstream, destSvc, int(server.Port.Number)),
+					"", port)
 			}
 		}
 	}
@@ -514,12 +521,18 @@ func buildGatewayNetworkFiltersFromTLSRoutes(node *model.Proxy, env *model.Envir
 					// We ignore all the weighted destinations and pick the first one
 					// since TCP has no weighted cluster
 					upstream := tls.Route[0].Destination
-					clusterName := istio_route.GetDestinationCluster(upstream, push.ServiceByHostname[model.Hostname(upstream.Host)], int(server.Port.Number))
+					destSvc, present := push.ServiceByHostname[model.Hostname(upstream.Host)]
+					if !present {
+						log.Debugf("service %q does not exist in the registry", upstream.Host)
+						continue
+					}
 
 					filterChains = append(filterChains, &filterChainOpts{
-						sniHosts:       match.SniHosts,
-						tlsContext:     nil, // NO TLS context because this is passthrough
-						networkFilters: buildOutboundNetworkFilters(env, node, clusterName, "", port),
+						sniHosts:   match.SniHosts,
+						tlsContext: nil, // NO TLS context because this is passthrough
+						networkFilters: buildOutboundNetworkFilters(node,
+							istio_route.GetDestinationCluster(upstream, destSvc, int(server.Port.Number)),
+							"", port),
 					})
 				}
 			}

@@ -78,7 +78,6 @@ func serverCmd(info map[string]template.Info, adapters []adapter.InfoFn, printf,
 	sa.LoggingOptions.AttachCobraFlags(serverCmd)
 	sa.TracingOptions.AttachCobraFlags(serverCmd)
 	sa.IntrospectionOptions.AttachCobraFlags(serverCmd)
-	sa.LoadSheddingOptions.AttachCobraFlags(serverCmd)
 
 	return serverCmd
 }

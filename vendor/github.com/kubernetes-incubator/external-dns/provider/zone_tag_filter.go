@@ -51,6 +51,7 @@ func (f ZoneTagFilter) Match(tagsMap map[string]string) bool {
 	return true
 }
 
+// IsEmpty returns true if there are no tags for the filter
 func (f ZoneTagFilter) IsEmpty() bool {
 	return len(f.zoneTags) == 0
 }
