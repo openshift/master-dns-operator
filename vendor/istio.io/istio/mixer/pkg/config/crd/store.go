@@ -39,14 +39,6 @@ const (
 	// like k8s://?retry-timeout=1m
 	crdRetryTimeout = time.Second * 30
 
-	// crdRetryInterval is the default retry interval between the attempt to
-	// initialize caches
-	crdRetryInterval = time.Second
-
-	// crdBgRetryInterval is the default retry interval between the attempts to
-	// initialize cache for crd kinds that are not ready at store initialization.
-	crdBgRetryInterval = time.Second * 10
-
 	// ConfigAPIGroup is the API group for the config CRDs.
 	ConfigAPIGroup = "config.istio.io"
 	// ConfigAPIVersion is the API version for the config CRDs.
@@ -65,7 +57,7 @@ type Store struct {
 	donec           chan struct{}
 	apiGroupVersion string
 
-	cacheMutex sync.RWMutex
+	cacheMutex sync.Mutex
 	caches     map[string]cache.Store
 	informers  map[string]cache.SharedInformer
 
@@ -81,15 +73,6 @@ type Store struct {
 	// The interval to wait between the attempt to initialize caches. This is not const
 	// to allow changing the value for unittests.
 	retryInterval time.Duration
-
-	// The interval to wait between the attempt to initialize caches for crd kinds that
-	// are not ready at store initialization. This is not const to allow changing the
-	// value for unittests.
-	bgRetryInterval time.Duration
-
-	// criticalkinds are the kinds that are critical for mixer function and must be ready
-	// for store initialization.
-	criticalKinds []string
 }
 
 var _ store.Backend = new(Store)
@@ -162,61 +145,11 @@ func (s *Store) Init(kinds []string) error {
 	s.caches = make(map[string]cache.Store, len(kinds))
 	s.informers = make(map[string]cache.SharedInformer, len(kinds))
 	remaining := s.checkAndCreateCaches(d, lwBuilder, kinds)
-	timeout := time.After(s.retryTimeout)
-	tick := time.Tick(s.retryInterval)
-	stopRetry := false
-	for len(s.extractCriticalKinds(remaining)) != 0 && !stopRetry {
-		select {
-		case <-timeout:
-			stopRetry = true
-		case <-tick:
-			remaining = s.checkAndCreateCaches(d, lwBuilder, remaining)
-		default:
-		}
-	}
 	if len(remaining) > 0 {
-		if cks := s.extractCriticalKinds(remaining); len(cks) != 0 {
-			return fmt.Errorf("failed to discover critical kinds: %v", cks)
-		}
-		log.Warnf("Failed to discover kinds: %v, start retry in background", remaining)
-		go s.retryCreateCache(d, lwBuilder, remaining)
+		log.Warnf("Failed to discover kinds: %v", remaining)
 	}
+
 	return nil
-}
-
-func (s *Store) extractCriticalKinds(r []string) []string {
-	cks := make([]string, 0, len(r))
-	for _, k := range r {
-		for _, ck := range s.criticalKinds {
-			if ck == k {
-				cks = append(cks, ck)
-			}
-		}
-	}
-	return cks
-}
-
-func (s *Store) retryCreateCache(
-	d discovery.DiscoveryInterface,
-	lwBuilder listerWatcherBuilderInterface,
-	kinds []string) {
-	remaining := kinds
-	ticker := time.NewTicker(s.bgRetryInterval)
-	defer ticker.Stop()
-	stopRetry := false
-
-	for len(remaining) != 0 && !stopRetry {
-		select {
-		case <-s.donec:
-			stopRetry = true
-		case <-ticker.C:
-			rm := s.checkAndCreateCaches(d, lwBuilder, remaining)
-			if len(rm) < len(remaining) {
-				log.Debugf("discovered %v new kinds, remaining undiscovered kinds: %v", len(remaining)-len(rm), rm)
-			}
-			remaining = rm
-		}
-	}
 }
 
 // WaitForSynced implements store.WaitForSynced interface
@@ -258,9 +191,9 @@ func (s *Store) Get(key store.Key) (*store.BackEndResource, error) {
 	if s.ns != nil && !s.ns[key.Namespace] {
 		return nil, store.ErrNotFound
 	}
-	s.cacheMutex.RLock()
+	s.cacheMutex.Lock()
 	c, ok := s.caches[key.Kind]
-	s.cacheMutex.RUnlock()
+	s.cacheMutex.Unlock()
 	if !ok {
 		return nil, store.ErrNotFound
 	}
@@ -296,7 +229,7 @@ func ToBackEndResource(uns *unstructured.Unstructured) *store.BackEndResource {
 // List implements store.Backend interface.
 func (s *Store) List() map[store.Key]*store.BackEndResource {
 	result := make(map[store.Key]*store.BackEndResource)
-	s.cacheMutex.RLock()
+	s.cacheMutex.Lock()
 	for kind, c := range s.caches {
 		for _, obj := range c.List() {
 			uns := obj.(*unstructured.Unstructured)
@@ -307,7 +240,7 @@ func (s *Store) List() map[store.Key]*store.BackEndResource {
 			result[key] = ToBackEndResource(uns)
 		}
 	}
-	s.cacheMutex.RUnlock()
+	s.cacheMutex.Unlock()
 	return result
 }
 

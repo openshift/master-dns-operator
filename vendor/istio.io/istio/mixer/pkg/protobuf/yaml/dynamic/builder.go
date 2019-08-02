@@ -57,7 +57,9 @@ func NewEncoderBuilder(resolver yaml.Resolver, compiler Compiler, skipUnknown bo
 		resolver:    resolver,
 		compiler:    compiler,
 		skipUnknown: skipUnknown,
-		namedTypes:  valueTypeBuilderFuncs(),
+		namedTypes: map[string]NamedEncoderBuilderFunc{
+			valueTypeName: valueTypeEncoderBuilder,
+		},
 	}
 }
 

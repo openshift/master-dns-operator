@@ -59,19 +59,6 @@ const (
 
 	// LocalhostAddress for local binding
 	LocalhostAddress = "127.0.0.1"
-
-	// EnvoyHTTPLogFormat format for envoy access logs
-	EnvoyHTTPLogFormat = "[%START_TIME%] \"%REQ(:METHOD)% %REQ(X-ENVOY-ORIGINAL-PATH?:PATH)%" +
-		"%PROTOCOL%\" %RESPONSE_CODE% %RESPONSE_FLAGS% %BYTES_RECEIVED% %BYTES_SENT% " +
-		"%DURATION% %RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)% \"%REQ(X-FORWARDED-FOR)%\" " +
-		"\"%REQ(USER-AGENT)%\" \"%REQ(X-REQUEST-ID)%\" \"%REQ(:AUTHORITY)%\" \"%UPSTREAM_HOST%\" " +
-		"%UPSTREAM_CLUSTER% %UPSTREAM_LOCAL_ADDRESS% %DOWNSTREAM_LOCAL_ADDRESS% " +
-		"%DOWNSTREAM_REMOTE_ADDRESS%\n"
-
-	// EnvoyTCPLogFormat format for envoy access logs
-	EnvoyTCPLogFormat = "[%START_TIME%] %RESPONSE_FLAGS% %BYTES_RECEIVED% %BYTES_SENT% " +
-		"%DURATION% \"%UPSTREAM_HOST%\" %UPSTREAM_CLUSTER% %UPSTREAM_LOCAL_ADDRESS% %DOWNSTREAM_LOCAL_ADDRESS% " +
-		"%DOWNSTREAM_REMOTE_ADDRESS%\n"
 )
 
 var (
@@ -90,16 +77,11 @@ var (
 		Name: "pilot_conf_filter_chains",
 		Help: "Number of conflicting filter chains.",
 	})
-	totalInternalErrors = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "pilot_total_internal_errors",
-		Help: "Total number of internal pilot errors, excluding xDS errors.",
-	})
 )
 
 func init() {
 	prometheus.MustRegister(invalidOutboundListeners)
 	prometheus.MustRegister(filterChainsConflict)
-	prometheus.MustRegister(totalInternalErrors)
 }
 
 // ListenersALPNProtocols denotes the the list of ALPN protocols that the listener
@@ -140,7 +122,7 @@ func (configgen *ConfigGeneratorImpl) buildSidecarListeners(env *model.Environme
 		listeners = append(listeners, inbound...)
 		listeners = append(listeners, outbound...)
 
-		mgmtListeners := buildSidecarInboundMgmtListeners(env, managementPorts, node.IPAddress)
+		mgmtListeners := buildSidecarInboundMgmtListeners(managementPorts, node.IPAddress)
 		// If management listener port and service port are same, bad things happen
 		// when running in kubernetes, as the probes stop responding. So, append
 		// non overlapping listeners only.
@@ -306,21 +288,9 @@ func (configgen *ConfigGeneratorImpl) buildSidecarInboundListeners(env *model.En
 				}
 			}
 		case plugin.ListenerProtocolTCP:
-			if listenerOpts.tlsMultiplexed {
-				listenerOpts.filterChainOpts = []*filterChainOpts{
-					{
-						transportProtocol: authn.EnvoyRawBufferMatch,
-						networkFilters:    buildInboundNetworkFilters(env, instance),
-					}, {
-						transportProtocol: authn.EnvoyTLSMatch,
-						networkFilters:    buildInboundNetworkFilters(env, instance),
-					},
-				}
-			} else {
-				listenerOpts.filterChainOpts = []*filterChainOpts{{
-					networkFilters: buildInboundNetworkFilters(env, instance),
-				}}
-			}
+			listenerOpts.filterChainOpts = []*filterChainOpts{{
+				networkFilters: buildInboundNetworkFilters(instance),
+			}}
 
 		default:
 			log.Warnf("Unsupported inbound protocol %v for port %#v", protocol, instance.Endpoint.ServicePort)
@@ -548,7 +518,7 @@ func (configgen *ConfigGeneratorImpl) buildSidecarOutboundListeners(env *model.E
 					// The conflict resolution is done later in this code
 				}
 
-				listenerOpts.filterChainOpts = buildSidecarOutboundTCPTLSFilterChainOpts(env, node, push, configs,
+				listenerOpts.filterChainOpts = buildSidecarOutboundTCPTLSFilterChainOpts(node, push, configs,
 					destinationIPAddress, service, servicePort, proxyLabels, meshGateway)
 			default:
 				// UDP or other protocols: no need to log, it's too noisy
@@ -708,7 +678,7 @@ func (configgen *ConfigGeneratorImpl) buildSidecarOutboundListeners(env *model.E
 // the pod.
 // So, if a user wants to use kubernetes probes with Istio, she should ensure
 // that the health check ports are distinct from the service ports.
-func buildSidecarInboundMgmtListeners(env *model.Environment, managementPorts model.PortList, managementIP string) []*xdsapi.Listener {
+func buildSidecarInboundMgmtListeners(managementPorts model.PortList, managementIP string) []*xdsapi.Listener {
 	listeners := make([]*xdsapi.Listener, 0, len(managementPorts))
 
 	if managementIP == "" {
@@ -736,7 +706,7 @@ func buildSidecarInboundMgmtListeners(env *model.Environment, managementPorts mo
 				port:     mPort.Port,
 				protocol: model.ProtocolTCP,
 				filterChainOpts: []*filterChainOpts{{
-					networkFilters: buildInboundNetworkFilters(env, instance),
+					networkFilters: buildInboundNetworkFilters(instance),
 				}},
 			}
 			l := buildListener(listenerOpts)
@@ -841,8 +811,7 @@ func buildHTTPConnectionManager(env *model.Environment, node *model.Proxy, httpO
 
 	if env.Mesh.AccessLogFile != "" {
 		fl := &fileaccesslog.FileAccessLog{
-			Path:   env.Mesh.AccessLogFile,
-			Format: EnvoyHTTPLogFormat,
+			Path: env.Mesh.AccessLogFile,
 		}
 
 		connectionManager.AccessLog = []*accesslog.AccessLog{
