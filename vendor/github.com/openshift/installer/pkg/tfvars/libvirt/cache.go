@@ -5,17 +5,22 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/gregjones/httpcache"
-	"github.com/gregjones/httpcache/diskcache"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
 
-// UseCachedImage leaves non-file:// image URIs unalterered.
+// CachedImage returns the location of the cached image.
+// FIXME: Exported for use by baremetal platform.
+func CachedImage(uri string) (string, error) {
+	return cachedImage(uri)
+}
+
+// cachedImage leaves non-file:// image URIs unalterered.
 // Other URIs are retrieved with a local cache at
 // $XDG_CACHE_HOME/openshift-install/libvirt [1].  This allows you to
 // use the same remote image URI multiple times without needing to
@@ -23,47 +28,47 @@ import (
 // periodically blow away your cache.
 //
 // [1]: https://standards.freedesktop.org/basedir-spec/basedir-spec-0.7.html
-func (libvirt *Libvirt) UseCachedImage() (err error) {
-	if strings.HasPrefix(libvirt.Image, "file://") {
-		return nil
+func cachedImage(uri string) (string, error) {
+	if strings.HasPrefix(uri, "file://") {
+		return uri, nil
 	}
 
-	logrus.Infof("Fetching OS image...")
+	logrus.Infof("Fetching OS image: %s", filepath.Base(uri))
 
 	// FIXME: Use os.UserCacheDir() once we bump to Go 1.11
 	// baseCacheDir, err := os.UserCacheDir()
 	// if err != nil {
-	// 	return err
+	// 	return uri, err
 	// }
 	baseCacheDir := filepath.Join(os.Getenv("HOME"), ".cache")
 
 	cacheDir := filepath.Join(baseCacheDir, "openshift-install", "libvirt")
 	httpCacheDir := filepath.Join(cacheDir, "http")
-	err = os.MkdirAll(httpCacheDir, 0777)
-	if err != nil {
-		return err
+	// We used to use httpCacheDir, warn if it still exists since the user may
+	// want to delete it
+	_, err := os.Stat(httpCacheDir)
+	if err == nil || !os.IsNotExist(err) {
+		logrus.Infof("The installer no longer uses %q, it can be deleted", httpCacheDir)
 	}
 
-	cache := diskcache.New(httpCacheDir)
-	transport := httpcache.NewTransport(cache)
-	resp, err := transport.Client().Get(libvirt.Image)
+	resp, err := http.Get(uri)
 	if err != nil {
-		return err
+		return uri, err
 	}
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("%s while getting %s", resp.Status, libvirt.Image)
+		return uri, fmt.Errorf("%s while getting %s", resp.Status, uri)
 	}
 	defer resp.Body.Close()
 
 	key, err := cacheKey(resp.Header.Get("ETag"))
 	if err != nil {
-		return fmt.Errorf("invalid ETag for %s: %v", libvirt.Image, err)
+		return uri, fmt.Errorf("invalid ETag for %s: %v", uri, err)
 	}
 
 	imageCacheDir := filepath.Join(cacheDir, "image")
 	err = os.MkdirAll(imageCacheDir, 0777)
 	if err != nil {
-		return err
+		return uri, err
 	}
 
 	imagePath := filepath.Join(imageCacheDir, key)
@@ -72,17 +77,16 @@ func (libvirt *Libvirt) UseCachedImage() (err error) {
 		logrus.Debugf("Using cached OS image %q", imagePath)
 	} else {
 		if !os.IsNotExist(err) {
-			return err
+			return uri, err
 		}
 
 		err = cacheImage(resp.Body, imagePath)
 		if err != nil {
-			return err
+			return uri, err
 		}
 	}
 
-	libvirt.Image = fmt.Sprintf("file://%s", filepath.ToSlash(imagePath))
-	return nil
+	return fmt.Sprintf("file://%s", filepath.ToSlash(imagePath)), nil
 }
 
 func cacheKey(etag string) (key string, err error) {

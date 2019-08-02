@@ -76,9 +76,9 @@ func (client *Client) QueryDeviceStatWithCallback(request *QueryDeviceStatReques
 // QueryDeviceStatRequest is the request struct for api QueryDeviceStat
 type QueryDeviceStatRequest struct {
 	*requests.RpcRequest
+	EndTime    string           `position:"Query" name:"EndTime"`
 	AppKey     requests.Integer `position:"Query" name:"AppKey"`
 	StartTime  string           `position:"Query" name:"StartTime"`
-	EndTime    string           `position:"Query" name:"EndTime"`
 	DeviceType string           `position:"Query" name:"DeviceType"`
 	QueryType  string           `position:"Query" name:"QueryType"`
 }
@@ -95,7 +95,7 @@ func CreateQueryDeviceStatRequest() (request *QueryDeviceStatRequest) {
 	request = &QueryDeviceStatRequest{
 		RpcRequest: &requests.RpcRequest{},
 	}
-	request.InitWithApiInfo("Push", "2016-08-01", "QueryDeviceStat", "", "")
+	request.InitWithApiInfo("Push", "2016-08-01", "QueryDeviceStat", "push", "openAPI")
 	return
 }
 

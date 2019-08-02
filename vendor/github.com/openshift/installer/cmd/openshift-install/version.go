@@ -3,18 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
-	"strings"
 
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/installer/pkg/terraform"
-)
-
-var (
-	version = "was not built correctly" // set in hack/build.sh
+	"github.com/openshift/installer/pkg/asset/releaseimage"
+	"github.com/openshift/installer/pkg/version"
 )
 
 func newVersionCmd() *cobra.Command {
@@ -22,20 +15,18 @@ func newVersionCmd() *cobra.Command {
 		Use:   "version",
 		Short: "Print version information",
 		Long:  "",
+		Args:  cobra.ExactArgs(0),
 		RunE:  runVersionCmd,
 	}
 }
 
 func runVersionCmd(cmd *cobra.Command, args []string) error {
-	fmt.Printf("%s %s\n", os.Args[0], version)
-	terraformVersion, err := terraform.Version()
-	if err != nil {
-		exitError, ok := err.(*exec.ExitError)
-		if ok && len(exitError.Stderr) > 0 {
-			logrus.Error(strings.Trim(string(exitError.Stderr), "\n"))
-		}
-		return errors.Wrap(err, "Failed to calculate Terraform version")
+	fmt.Printf("%s %s\n", os.Args[0], version.Raw)
+	if version.Commit != "" {
+		fmt.Printf("built from commit %s\n", version.Commit)
 	}
-	fmt.Println(terraformVersion)
+	if image, err := releaseimage.Default(); err == nil {
+		fmt.Printf("release image %s\n", image)
+	}
 	return nil
 }

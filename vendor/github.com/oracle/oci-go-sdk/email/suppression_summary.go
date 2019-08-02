@@ -1,9 +1,12 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
-// Email Delivery Service API
+// Email Delivery API
 //
-// API spec for managing OCI Email Delivery services.
+// API for the Email Delivery service. Use this API to send high-volume, application-generated
+// emails. For more information, see Overview of the Email Delivery Service (https://docs.cloud.oracle.com/iaas/Content/Email/Concepts/overview.htm).
+//
+// **Note:** Write actions (POST, UPDATE, DELETE) may take several minutes to propagate and be reflected by the API. If a subsequent read request fails to reflect your changes, wait a few minutes and try again.
 //
 
 package email
@@ -14,6 +17,9 @@ import (
 
 // SuppressionSummary The full information representing a suppression.
 type SuppressionSummary struct {
+
+	// The OCID for the compartment.
+	CompartmentId *string `mandatory:"false" json:"compartmentId"`
 
 	// The email address of the suppression.
 	EmailAddress *string `mandatory:"false" json:"emailAddress"`
@@ -37,7 +43,7 @@ func (m SuppressionSummary) String() string {
 // SuppressionSummaryReasonEnum Enum with underlying type: string
 type SuppressionSummaryReasonEnum string
 
-// Set of constants representing the allowable values for SuppressionSummaryReason
+// Set of constants representing the allowable values for SuppressionSummaryReasonEnum
 const (
 	SuppressionSummaryReasonUnknown     SuppressionSummaryReasonEnum = "UNKNOWN"
 	SuppressionSummaryReasonHardbounce  SuppressionSummaryReasonEnum = "HARDBOUNCE"
@@ -56,7 +62,7 @@ var mappingSuppressionSummaryReason = map[string]SuppressionSummaryReasonEnum{
 	"UNSUBSCRIBE": SuppressionSummaryReasonUnsubscribe,
 }
 
-// GetSuppressionSummaryReasonEnumValues Enumerates the set of values for SuppressionSummaryReason
+// GetSuppressionSummaryReasonEnumValues Enumerates the set of values for SuppressionSummaryReasonEnum
 func GetSuppressionSummaryReasonEnumValues() []SuppressionSummaryReasonEnum {
 	values := make([]SuppressionSummaryReasonEnum, 0)
 	for _, v := range mappingSuppressionSummaryReason {

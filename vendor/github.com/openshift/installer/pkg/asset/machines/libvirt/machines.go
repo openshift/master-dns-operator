@@ -4,52 +4,48 @@ package libvirt
 import (
 	"fmt"
 
-	libvirtprovider "github.com/openshift/cluster-api-provider-libvirt/pkg/apis/libvirtproviderconfig/v1alpha1"
+	libvirtprovider "github.com/openshift/cluster-api-provider-libvirt/pkg/apis/libvirtproviderconfig/v1beta1"
+	machineapi "github.com/openshift/cluster-api/pkg/apis/machine/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	clusterapi "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
 	"github.com/openshift/installer/pkg/types"
 	"github.com/openshift/installer/pkg/types/libvirt"
 )
 
 // Machines returns a list of machines for a machinepool.
-func Machines(config *types.InstallConfig, pool *types.MachinePool, role, userDataSecret string) ([]clusterapi.Machine, error) {
+func Machines(clusterID string, config *types.InstallConfig, pool *types.MachinePool, role, userDataSecret string) ([]machineapi.Machine, error) {
 	if configPlatform := config.Platform.Name(); configPlatform != libvirt.Name {
 		return nil, fmt.Errorf("non-Libvirt configuration: %q", configPlatform)
 	}
-	// FIXME: empty is a valid case for Libvirt as we don't use it.
-	if poolPlatform := pool.Platform.Name(); poolPlatform != "" && poolPlatform != libvirt.Name {
+	if poolPlatform := pool.Platform.Name(); poolPlatform != libvirt.Name {
 		return nil, fmt.Errorf("non-Libvirt machine-pool: %q", poolPlatform)
 	}
-	clustername := config.ObjectMeta.Name
 	platform := config.Platform.Libvirt
-	// FIXME: libvirt actuator does not support any options from machinepool.
-	// mpool := pool.Platform.Libvirt
 
 	total := int64(1)
 	if pool.Replicas != nil {
 		total = *pool.Replicas
 	}
-	provider := provider(clustername, platform, userDataSecret)
-	var machines []clusterapi.Machine
+	provider := provider(clusterID, config.Networking.MachineCIDR.String(), platform, userDataSecret)
+	var machines []machineapi.Machine
 	for idx := int64(0); idx < total; idx++ {
-		machine := clusterapi.Machine{
+		machine := machineapi.Machine{
 			TypeMeta: metav1.TypeMeta{
-				APIVersion: "cluster.k8s.io/v1alpha1",
+				APIVersion: "machine.openshift.io/v1beta1",
 				Kind:       "Machine",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "openshift-cluster-api",
-				Name:      fmt.Sprintf("%s-%s-%d", clustername, pool.Name, idx),
+				Namespace: "openshift-machine-api",
+				Name:      fmt.Sprintf("%s-%s-%d", clusterID, pool.Name, idx),
 				Labels: map[string]string{
-					"sigs.k8s.io/cluster-api-cluster":      clustername,
-					"sigs.k8s.io/cluster-api-machine-role": role,
-					"sigs.k8s.io/cluster-api-machine-type": role,
+					"machine.openshift.io/cluster-api-cluster":      clusterID,
+					"machine.openshift.io/cluster-api-machine-role": role,
+					"machine.openshift.io/cluster-api-machine-type": role,
 				},
 			},
-			Spec: clusterapi.MachineSpec{
-				ProviderConfig: clusterapi.ProviderConfig{
+			Spec: machineapi.MachineSpec{
+				ProviderSpec: machineapi.ProviderSpec{
 					Value: &runtime.RawExtension{Object: provider},
 				},
 				// we don't need to set Versions, because we control those via cluster operators.
@@ -61,23 +57,23 @@ func Machines(config *types.InstallConfig, pool *types.MachinePool, role, userDa
 	return machines, nil
 }
 
-func provider(clusterName string, platform *libvirt.Platform, userDataSecret string) *libvirtprovider.LibvirtMachineProviderConfig {
+func provider(clusterID string, networkInterfaceAddress string, platform *libvirt.Platform, userDataSecret string) *libvirtprovider.LibvirtMachineProviderConfig {
 	return &libvirtprovider.LibvirtMachineProviderConfig{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "libvirtproviderconfig.k8s.io/v1alpha1",
+			APIVersion: "libvirtproviderconfig.openshift.io/v1beta1",
 			Kind:       "LibvirtMachineProviderConfig",
 		},
-		DomainMemory: 2048,
-		DomainVcpu:   2,
+		DomainMemory: 6144,
+		DomainVcpu:   4,
 		Ignition: &libvirtprovider.Ignition{
 			UserDataSecret: userDataSecret,
 		},
 		Volume: &libvirtprovider.Volume{
-			PoolName:     "default",
-			BaseVolumeID: fmt.Sprintf("/var/lib/libvirt/images/%s-base", clusterName),
+			PoolName:     clusterID,
+			BaseVolumeID: fmt.Sprintf("%s-base", clusterID),
 		},
-		NetworkInterfaceName:    clusterName,
-		NetworkInterfaceAddress: platform.Network.IPRange,
+		NetworkInterfaceName:    clusterID,
+		NetworkInterfaceAddress: networkInterfaceAddress,
 		Autostart:               false,
 		URI:                     platform.URI,
 	}

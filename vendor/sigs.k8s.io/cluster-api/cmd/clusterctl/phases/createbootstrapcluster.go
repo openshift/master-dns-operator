@@ -17,35 +17,34 @@ limitations under the License.
 package phases
 
 import (
-	"fmt"
-
-	"github.com/golang/glog"
+	"github.com/pkg/errors"
+	"k8s.io/klog"
 	"sigs.k8s.io/cluster-api/cmd/clusterctl/clusterdeployer/bootstrap"
 	"sigs.k8s.io/cluster-api/cmd/clusterctl/clusterdeployer/clusterclient"
 )
 
 func CreateBootstrapCluster(provisioner bootstrap.ClusterProvisioner, cleanupBootstrapCluster bool, clientFactory clusterclient.Factory) (clusterclient.Client, func(), error) {
-	glog.Info("Creating bootstrap cluster")
+	klog.Info("Preparing bootstrap cluster")
 
 	cleanupFn := func() {}
 	if err := provisioner.Create(); err != nil {
-		return nil, cleanupFn, fmt.Errorf("could not create bootstrap control plane: %v", err)
+		return nil, cleanupFn, errors.Wrap(err, "could not create bootstrap control plane")
 	}
 
 	if cleanupBootstrapCluster {
 		cleanupFn = func() {
-			glog.Info("Cleaning up bootstrap cluster.")
+			klog.Info("Cleaning up bootstrap cluster.")
 			provisioner.Delete()
 		}
 	}
 
 	bootstrapKubeconfig, err := provisioner.GetKubeconfig()
 	if err != nil {
-		return nil, cleanupFn, fmt.Errorf("unable to get bootstrap cluster kubeconfig: %v", err)
+		return nil, cleanupFn, errors.Wrap(err, "unable to get bootstrap cluster kubeconfig")
 	}
 	bootstrapClient, err := clientFactory.NewClientFromKubeconfig(bootstrapKubeconfig)
 	if err != nil {
-		return nil, cleanupFn, fmt.Errorf("unable to create bootstrap client: %v", err)
+		return nil, cleanupFn, errors.Wrap(err, "unable to create bootstrap client")
 	}
 
 	return bootstrapClient, cleanupFn, nil

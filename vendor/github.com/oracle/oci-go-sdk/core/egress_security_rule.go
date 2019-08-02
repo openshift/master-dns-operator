@@ -1,9 +1,13 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// APIs for Networking Service, Compute Service, and Block Volume Service.
+// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
+// to manage resources such as virtual cloud networks (VCNs), compute instances, and
+// block storage volumes.
 //
 
 package core
@@ -15,8 +19,13 @@ import (
 // EgressSecurityRule A rule for allowing outbound IP packets.
 type EgressSecurityRule struct {
 
-	// The destination service cidrBlock or destination IP address range in CIDR notation for the egress rule.
-	// This is the range of IP addresses that a packet originating from the instance can go to.
+	// Conceptually, this is the range of IP addresses that a packet originating from the instance
+	// can go to.
+	// Allowed values:
+	//   * IP address range in CIDR notation. For example: `192.168.1.0/24`
+	//   * The `cidrBlock` value for a Service, if you're
+	//     setting up a security list rule for traffic destined for a particular `Service` through
+	//     a service gateway. For example: `oci-phx-objectstorage`.
 	Destination *string `mandatory:"true" json:"destination"`
 
 	// The transport protocol. Specify either `all` or an IPv4 protocol number as
@@ -25,9 +34,12 @@ type EgressSecurityRule struct {
 	// Options are supported only for ICMP ("1"), TCP ("6"), and UDP ("17").
 	Protocol *string `mandatory:"true" json:"protocol"`
 
-	// Type of destination for EgressSecurityRule. SERVICE_CIDR_BLOCK should be used if destination is a service
-	// cidrBlock. CIDR_BLOCK should be used if destination is IP address range in CIDR notation.
-	// It defaults to CIDR_BLOCK, if not specified.
+	// Type of destination for the rule. The default is `CIDR_BLOCK`.
+	// Allowed values:
+	//   * `CIDR_BLOCK`: If the rule's `destination` is an IP address range in CIDR notation.
+	//   * `SERVICE_CIDR_BLOCK`: If the rule's `destination` is the `cidrBlock` value for a
+	//     Service (the rule is for traffic destined for a
+	//     particular `Service` through a service gateway).
 	DestinationType EgressSecurityRuleDestinationTypeEnum `mandatory:"false" json:"destinationType,omitempty"`
 
 	// Optional and valid only for ICMP. Use to specify a particular ICMP type and code
@@ -63,7 +75,7 @@ func (m EgressSecurityRule) String() string {
 // EgressSecurityRuleDestinationTypeEnum Enum with underlying type: string
 type EgressSecurityRuleDestinationTypeEnum string
 
-// Set of constants representing the allowable values for EgressSecurityRuleDestinationType
+// Set of constants representing the allowable values for EgressSecurityRuleDestinationTypeEnum
 const (
 	EgressSecurityRuleDestinationTypeCidrBlock        EgressSecurityRuleDestinationTypeEnum = "CIDR_BLOCK"
 	EgressSecurityRuleDestinationTypeServiceCidrBlock EgressSecurityRuleDestinationTypeEnum = "SERVICE_CIDR_BLOCK"
@@ -74,7 +86,7 @@ var mappingEgressSecurityRuleDestinationType = map[string]EgressSecurityRuleDest
 	"SERVICE_CIDR_BLOCK": EgressSecurityRuleDestinationTypeServiceCidrBlock,
 }
 
-// GetEgressSecurityRuleDestinationTypeEnumValues Enumerates the set of values for EgressSecurityRuleDestinationType
+// GetEgressSecurityRuleDestinationTypeEnumValues Enumerates the set of values for EgressSecurityRuleDestinationTypeEnum
 func GetEgressSecurityRuleDestinationTypeEnumValues() []EgressSecurityRuleDestinationTypeEnum {
 	values := make([]EgressSecurityRuleDestinationTypeEnum, 0)
 	for _, v := range mappingEgressSecurityRuleDestinationType {

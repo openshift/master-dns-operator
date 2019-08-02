@@ -17,8 +17,8 @@ package imm
 
 // QRCodesRectangle is a nested struct in imm response
 type QRCodesRectangle struct {
-	Left   int `json:"Left" xml:"Left"`
-	Top    int `json:"Top" xml:"Top"`
-	Width  int `json:"Width" xml:"Width"`
-	Height int `json:"Height" xml:"Height"`
+	Left   string `json:"Left" xml:"Left"`
+	Top    string `json:"Top" xml:"Top"`
+	Width  string `json:"Width" xml:"Width"`
+	Height string `json:"Height" xml:"Height"`
 }

@@ -19,7 +19,6 @@ package v1alpha1
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 )
@@ -32,6 +31,7 @@ const ClusterFinalizer = "cluster.cluster.k8s.io"
 /// [Cluster]
 // Cluster is the Schema for the clusters API
 // +k8s:openapi-gen=true
+// +kubebuilder:resource:shortName=cl
 // +kubebuilder:subresource:status
 type Cluster struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -47,6 +47,7 @@ type Cluster struct {
 // ClusterSpec defines the desired state of Cluster
 type ClusterSpec struct {
 	// Cluster network configuration
+	// +optional
 	ClusterNetwork ClusterNetworkingConfig `json:"clusterNetwork"`
 
 	// Provider-specific serialized configuration to use during
@@ -66,7 +67,7 @@ type ClusterNetworkingConfig struct {
 	// The network ranges from which service VIPs are allocated.
 	Services NetworkRanges `json:"services"`
 
-	// The network ranges from which POD networks are allocated.
+	// The network ranges from which Pod networks are allocated.
 	Pods NetworkRanges `json:"pods"`
 
 	// Domain name for services.

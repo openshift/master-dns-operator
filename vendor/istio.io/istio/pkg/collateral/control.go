@@ -12,6 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/*
+NOTICE: The zsh constants are derived from the kubectl completion code,
+(k8s.io/kubernetes/pkg/kubectl/cmd/completion/completion.go), with the
+following copyright/license:
+
+Copyright 2016 The Kubernetes Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package collateral
 
 import (
@@ -23,9 +40,13 @@ import (
 	"strconv"
 	"strings"
 
+	"istio.io/istio/pkg/annotations"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
 	"github.com/spf13/pflag"
+
+	"istio.io/istio/pkg/env"
 )
 
 // Control determines the behavior of the EmitCollateral function
@@ -42,7 +63,10 @@ type Control struct {
 	// EmitBashCompletion controls whether to produce bash completion files.
 	EmitBashCompletion bool
 
-	// EmitMarkdown controls whether to produce mankdown documentation files.
+	// EmitZshCompletion controls whether to produce zsh completion files.
+	EmitZshCompletion bool
+
+	// EmitMarkdown controls whether to produce markdown documentation files.
 	EmitMarkdown bool
 
 	// EmitHTMLFragmentWithFrontMatter controls whether to produce HTML fragments with Jekyll/Hugo front matter.
@@ -83,6 +107,163 @@ func EmitCollateral(root *cobra.Command, c *Control) error {
 	if c.EmitBashCompletion {
 		if err := root.GenBashCompletionFile(c.OutputDir + "/" + root.Name() + ".bash"); err != nil {
 			return fmt.Errorf("unable to output bash completion file: %v", err)
+		}
+	}
+
+	if c.EmitZshCompletion {
+
+		// Constants used in zsh completion file
+		zshInitialization := `#compdef ` + root.Name() + `
+
+__istio_bash_source() {
+	alias shopt=':'
+	alias _expand=_bash_expand
+	alias _complete=_bash_comp
+	emulate -L sh
+	setopt kshglob noshglob braceexpand
+	source "$@"
+}
+__istio_type() {
+	# -t is not supported by zsh
+	if [ "$1" == "-t" ]; then
+		shift
+		# fake Bash 4 to disable "complete -o nospace". Instead
+		# "compopt +-o nospace" is used in the code to toggle trailing
+		# spaces. We don't support that, but leave trailing spaces on
+		# all the time
+		if [ "$1" = "__istio_compopt" ]; then
+			echo builtin
+			return 0
+		fi
+	fi
+	type "$@"
+}
+__istio_compgen() {
+	local completions w
+	completions=( $(compgen "$@") ) || return $?
+	# filter by given word as prefix
+	while [[ "$1" = -* && "$1" != -- ]]; do
+		shift
+		shift
+	done
+	if [[ "$1" == -- ]]; then
+		shift
+	fi
+	for w in "${completions[@]}"; do
+		if [[ "${w}" = "$1"* ]]; then
+			echo "${w}"
+		fi
+	done
+}
+__istio_compopt() {
+	true # don't do anything. Not supported by bashcompinit in zsh
+}
+__istio_ltrim_colon_completions()
+{
+	if [[ "$1" == *:* && "$COMP_WORDBREAKS" == *:* ]]; then
+		# Remove colon-word prefix from COMPREPLY items
+		local colon_word=${1%${1##*:}}
+		local i=${#COMPREPLY[*]}
+		while [[ $((--i)) -ge 0 ]]; do
+			COMPREPLY[$i]=${COMPREPLY[$i]#"$colon_word"}
+		done
+	fi
+}
+__istio_get_comp_words_by_ref() {
+	cur="${COMP_WORDS[COMP_CWORD]}"
+	prev="${COMP_WORDS[${COMP_CWORD}-1]}"
+	words=("${COMP_WORDS[@]}")
+	cword=("${COMP_CWORD[@]}")
+}
+__istio_filedir() {
+	local RET OLD_IFS w qw
+	__istio_debug "_filedir $@ cur=$cur"
+	if [[ "$1" = \~* ]]; then
+		# somehow does not work. Maybe, zsh does not call this at all
+		eval echo "$1"
+		return 0
+	fi
+	OLD_IFS="$IFS"
+	IFS=$'\n'
+	if [ "$1" = "-d" ]; then
+		shift
+		RET=( $(compgen -d) )
+	else
+		RET=( $(compgen -f) )
+	fi
+	IFS="$OLD_IFS"
+	IFS="," __istio_debug "RET=${RET[@]} len=${#RET[@]}"
+	for w in ${RET[@]}; do
+		if [[ ! "${w}" = "${cur}"* ]]; then
+			continue
+		fi
+		if eval "[[ \"\${w}\" = *.$1 || -d \"\${w}\" ]]"; then
+			qw="$(__istio_quote "${w}")"
+			if [ -d "${w}" ]; then
+				COMPREPLY+=("${qw}/")
+			else
+				COMPREPLY+=("${qw}")
+			fi
+		fi
+	done
+}
+__istio_quote() {
+	if [[ $1 == \'* || $1 == \"* ]]; then
+		# Leave out first character
+		printf %q "${1:1}"
+	else
+		printf %q "$1"
+	fi
+}
+autoload -U +X bashcompinit && bashcompinit
+# use word boundary patterns for BSD or GNU sed
+LWORD='[[:<:]]'
+RWORD='[[:>:]]'
+if sed --help 2>&1 | grep -q GNU; then
+	LWORD='\<'
+	RWORD='\>'
+fi
+__istio_convert_bash_to_zsh() {
+	sed \
+	-e 's/declare -F/whence -w/' \
+	-e 's/_get_comp_words_by_ref "\$@"/_get_comp_words_by_ref "\$*"/' \
+	-e 's/local \([a-zA-Z0-9_]*\)=/local \1; \1=/' \
+	-e 's/flags+=("\(--.*\)=")/flags+=("\1"); two_word_flags+=("\1")/' \
+	-e 's/must_have_one_flag+=("\(--.*\)=")/must_have_one_flag+=("\1")/' \
+	-e "s/${LWORD}_filedir${RWORD}/__istio_filedir/g" \
+	-e "s/${LWORD}_get_comp_words_by_ref${RWORD}/__istio_get_comp_words_by_ref/g" \
+	-e "s/${LWORD}__ltrim_colon_completions${RWORD}/__istio_ltrim_colon_completions/g" \
+	-e "s/${LWORD}compgen${RWORD}/__istio_compgen/g" \
+	-e "s/${LWORD}compopt${RWORD}/__istio_compopt/g" \
+	-e "s/${LWORD}declare${RWORD}/builtin declare/g" \
+	-e "s/\\\$(type${RWORD}/\$(__istio_type/g" \
+	<<'BASH_COMPLETION_EOF'
+`
+
+		zshTail := `
+BASH_COMPLETION_EOF
+}
+
+__istio_bash_source <(__istio_convert_bash_to_zsh)
+_complete istio 2>/dev/null
+`
+
+		// Create the output file.
+		outFile, err := os.Create(c.OutputDir + "/_" + root.Name())
+		if err != nil {
+			return fmt.Errorf("unable to create zsh completion file: %v", err)
+		}
+		defer outFile.Close()
+
+		// Concatenate the head, initialization, generated bash, and tail to the file
+		if _, err = outFile.Write([]byte(zshInitialization)); err != nil {
+			return fmt.Errorf("unable to output zsh initialization: %v", err)
+		}
+		if err := root.GenBashCompletion(outFile); err != nil {
+			return fmt.Errorf("unable to output zsh completion file: %v", err)
+		}
+		if _, err = outFile.Write([]byte(zshTail)); err != nil {
+			return fmt.Errorf("unable to output zsh tail: %v", err)
 		}
 	}
 
@@ -137,7 +318,7 @@ func genHTMLFragment(cmd *cobra.Command, path string) error {
 		count++
 	}
 
-	g.genFileHeader(cmd, count)
+	g.genFrontMatter(cmd, count)
 	for _, n := range names {
 		if commands[n].Name() == help {
 			continue
@@ -145,6 +326,9 @@ func genHTMLFragment(cmd *cobra.Command, path string) error {
 
 		g.genCommand(commands[n])
 	}
+
+	g.genVars(cmd)
+	g.genAnnotations(cmd)
 
 	f, err := os.Create(path)
 	if err != nil {
@@ -156,7 +340,7 @@ func genHTMLFragment(cmd *cobra.Command, path string) error {
 	return err
 }
 
-func (g *generator) genFileHeader(root *cobra.Command, numEntries int) {
+func (g *generator) genFrontMatter(root *cobra.Command, numEntries int) {
 	g.emit("---")
 	g.emit("title: ", root.Name())
 	g.emit("description: ", root.Short)
@@ -183,9 +367,28 @@ func (g *generator) genCommand(cmd *cobra.Command) {
 	if cmd.Runnable() {
 		g.emit("<pre class=\"language-bash\"><code>", html.EscapeString(cmd.UseLine()))
 		g.emit("</code></pre>")
-	}
 
-	// TODO: output aliases
+		if len(cmd.Aliases) > 0 {
+			// first word in cmd.Use represents the command that is being aliased
+			word := cmd.Use
+			index := strings.Index(word, " ")
+			if index > 0 {
+				word = word[0:index]
+			}
+
+			g.emit("<div class=\"aliases\">")
+			line := cmd.UseLine()
+			for i, alias := range cmd.Aliases {
+				r := strings.Replace(line, word, alias, 1)
+				if i == 0 {
+					g.emit("<pre class=\"language-bash\"><code>", html.EscapeString(r))
+				} else {
+					g.emit(html.EscapeString(r))
+				}
+			}
+			g.emit("</code></pre></div>")
+		}
+	}
 
 	flags := cmd.NonInheritedFlags()
 	flags.SetOutput(g.buffer)
@@ -217,11 +420,13 @@ func (g *generator) genCommand(cmd *cobra.Command) {
 
 			g.emit("<table class=\"command-flags\">")
 			g.emit("<thead>")
+			g.emit("<tr>")
 			g.emit("<th>Flags</th>")
 			if genShorthand {
 				g.emit("<th>Shorthand</th>")
 			}
 			g.emit("<th>Description</th>")
+			g.emit("</tr>")
 			g.emit("</thead>")
 			g.emit("<tbody>")
 
@@ -329,4 +534,116 @@ func unquoteUsage(flag *pflag.Flag) (name string, usage string) {
 func normalizeID(id string) string {
 	id = strings.Replace(id, " ", "-", -1)
 	return strings.Replace(id, ".", "-", -1)
+}
+
+func (g *generator) genVars(root *cobra.Command) {
+	envVars := env.VarDescriptions()
+
+	count := 0
+	for _, v := range envVars {
+		if v.Hidden {
+			continue
+		}
+		count++
+	}
+
+	if count == 0 {
+		return
+	}
+
+	g.emit("<h2 id=\"envvars\">Environment variables</h2>")
+
+	g.emit("These environment variables affect the behavior of the <code>", root.Name(), "</code> command.")
+
+	g.emit("<table class=\"envvars\">")
+	g.emit("<thead>")
+	g.emit("<tr>")
+	g.emit("<th>Variable Name</th>")
+	g.emit("<th>Type</th>")
+	g.emit("<th>Default Value</th>")
+	g.emit("<th>Description</th>")
+	g.emit("</tr>")
+	g.emit("</thead>")
+	g.emit("<tbody>")
+
+	for _, v := range envVars {
+		if v.Hidden {
+			continue
+		}
+
+		if v.Deprecated {
+			g.emit("<tr class='deprecated'>")
+		} else {
+			g.emit("<tr>")
+		}
+		g.emit("<td><code>", html.EscapeString(v.Name), "</code></td>")
+
+		switch v.Type {
+		case env.STRING:
+			g.emit("<td>String</td>")
+		case env.BOOL:
+			g.emit("<td>Boolean</td>")
+		case env.INT:
+			g.emit("<td>Integer</td>")
+		case env.FLOAT:
+			g.emit("<td>Floating-Point</td>")
+		case env.DURATION:
+			g.emit("<td>Time Duration</td>")
+		}
+
+		g.emit("<td><code>", html.EscapeString(v.DefaultValue), "</code></td>")
+		g.emit("<td>", html.EscapeString(v.Description), "</td>")
+		g.emit("</tr>")
+	}
+
+	g.emit("</tbody>")
+	g.emit("</table>")
+}
+
+func (g *generator) genAnnotations(root *cobra.Command) {
+	anns := annotations.Descriptions()
+
+	count := 0
+	for _, a := range anns {
+		if a.Hidden {
+			continue
+		}
+		count++
+	}
+
+	if count == 0 {
+		return
+	}
+
+	g.emit("<h2 id=\"annotations\">Annotations</h2>")
+
+	g.emit("These resource annotations are used by the <code>", root.Name(), "</code> command.")
+
+	g.emit("<table class=\"annotations\">")
+	g.emit("<thead>")
+	g.emit("<tr>")
+	g.emit("<th>Annotation Name</th>")
+	g.emit("<th>Description</th>")
+	g.emit("</tr>")
+	g.emit("</thead>")
+	g.emit("<tbody>")
+
+	for _, a := range anns {
+		if a.Hidden {
+			continue
+		}
+
+		if a.Deprecated {
+			g.emit("<tr class='deprecated'>")
+		} else {
+			g.emit("<tr>")
+		}
+		g.emit("<td><code>", html.EscapeString(a.Name), "</code></td>")
+
+		g.emit("<td>", html.EscapeString(a.Description), "</td>")
+		g.emit("</tr>")
+	}
+
+	g.emit("</tbody>")
+	g.emit("</table>")
 }

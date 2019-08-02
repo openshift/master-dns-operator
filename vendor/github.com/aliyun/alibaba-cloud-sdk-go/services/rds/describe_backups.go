@@ -76,19 +76,19 @@ func (client *Client) DescribeBackupsWithCallback(request *DescribeBackupsReques
 // DescribeBackupsRequest is the request struct for api DescribeBackups
 type DescribeBackupsRequest struct {
 	*requests.RpcRequest
-	OwnerId              requests.Integer `position:"Query" name:"OwnerId"`
-	ResourceOwnerAccount string           `position:"Query" name:"ResourceOwnerAccount"`
 	ResourceOwnerId      requests.Integer `position:"Query" name:"ResourceOwnerId"`
-	DBInstanceId         string           `position:"Query" name:"DBInstanceId"`
+	ResourceOwnerAccount string           `position:"Query" name:"ResourceOwnerAccount"`
 	BackupId             string           `position:"Query" name:"BackupId"`
-	BackupLocation       string           `position:"Query" name:"BackupLocation"`
-	BackupStatus         string           `position:"Query" name:"BackupStatus"`
-	BackupMode           string           `position:"Query" name:"BackupMode"`
-	StartTime            string           `position:"Query" name:"StartTime"`
-	EndTime              string           `position:"Query" name:"EndTime"`
-	PageSize             requests.Integer `position:"Query" name:"PageSize"`
-	PageNumber           requests.Integer `position:"Query" name:"PageNumber"`
 	OwnerAccount         string           `position:"Query" name:"OwnerAccount"`
+	EndTime              string           `position:"Query" name:"EndTime"`
+	StartTime            string           `position:"Query" name:"StartTime"`
+	OwnerId              requests.Integer `position:"Query" name:"OwnerId"`
+	PageNumber           requests.Integer `position:"Query" name:"PageNumber"`
+	BackupStatus         string           `position:"Query" name:"BackupStatus"`
+	BackupLocation       string           `position:"Query" name:"BackupLocation"`
+	PageSize             requests.Integer `position:"Query" name:"PageSize"`
+	DBInstanceId         string           `position:"Query" name:"DBInstanceId"`
+	BackupMode           string           `position:"Query" name:"BackupMode"`
 }
 
 // DescribeBackupsResponse is the response struct for api DescribeBackups
@@ -98,7 +98,7 @@ type DescribeBackupsResponse struct {
 	TotalRecordCount string                 `json:"TotalRecordCount" xml:"TotalRecordCount"`
 	PageNumber       string                 `json:"PageNumber" xml:"PageNumber"`
 	PageRecordCount  string                 `json:"PageRecordCount" xml:"PageRecordCount"`
-	TotalBackupSize  int                    `json:"TotalBackupSize" xml:"TotalBackupSize"`
+	TotalBackupSize  int64                  `json:"TotalBackupSize" xml:"TotalBackupSize"`
 	Items            ItemsInDescribeBackups `json:"Items" xml:"Items"`
 }
 

@@ -19,13 +19,18 @@ package imm
 type JobsItem struct {
 	JobId           string `json:"JobId" xml:"JobId"`
 	SetId           string `json:"SetId" xml:"SetId"`
-	Percent         int    `json:"Percent" xml:"Percent"`
-	TgtUri          string `json:"TgtUri" xml:"TgtUri"`
+	Result          string `json:"Result" xml:"Result"`
+	ErrorMessage    string `json:"ErrorMessage" xml:"ErrorMessage"`
 	CreateTime      string `json:"CreateTime" xml:"CreateTime"`
-	NotifyEndpoint  string `json:"NotifyEndpoint" xml:"NotifyEndpoint"`
-	ExternalID      string `json:"ExternalID" xml:"ExternalID"`
-	Status          string `json:"Status" xml:"Status"`
-	NotifyTopicName int    `json:"NotifyTopicName" xml:"NotifyTopicName"`
 	FinishTime      string `json:"FinishTime" xml:"FinishTime"`
 	SrcUri          string `json:"SrcUri" xml:"SrcUri"`
+	Parameters      string `json:"Parameters" xml:"Parameters"`
+	Percent         int    `json:"Percent" xml:"Percent"`
+	StartTime       string `json:"StartTime" xml:"StartTime"`
+	EndTime         string `json:"EndTime" xml:"EndTime"`
+	Progress        int    `json:"Progress" xml:"Progress"`
+	NotifyEndpoint  string `json:"NotifyEndpoint" xml:"NotifyEndpoint"`
+	Status          string `json:"Status" xml:"Status"`
+	NotifyTopicName string `json:"NotifyTopicName" xml:"NotifyTopicName"`
+	JobType         string `json:"JobType" xml:"JobType"`
 }

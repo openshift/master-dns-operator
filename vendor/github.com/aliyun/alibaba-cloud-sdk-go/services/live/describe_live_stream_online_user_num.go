@@ -78,7 +78,6 @@ type DescribeLiveStreamOnlineUserNumRequest struct {
 	*requests.RpcRequest
 	AppName       string           `position:"Query" name:"AppName"`
 	SecurityToken string           `position:"Query" name:"SecurityToken"`
-	HlsSwitch     string           `position:"Query" name:"HlsSwitch"`
 	DomainName    string           `position:"Query" name:"DomainName"`
 	EndTime       string           `position:"Query" name:"EndTime"`
 	StartTime     string           `position:"Query" name:"StartTime"`
@@ -90,7 +89,7 @@ type DescribeLiveStreamOnlineUserNumRequest struct {
 type DescribeLiveStreamOnlineUserNumResponse struct {
 	*responses.BaseResponse
 	RequestId       string         `json:"RequestId" xml:"RequestId"`
-	TotalUserNumber int            `json:"TotalUserNumber" xml:"TotalUserNumber"`
+	TotalUserNumber int64          `json:"TotalUserNumber" xml:"TotalUserNumber"`
 	OnlineUserInfo  OnlineUserInfo `json:"OnlineUserInfo" xml:"OnlineUserInfo"`
 }
 

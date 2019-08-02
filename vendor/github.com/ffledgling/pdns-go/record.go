@@ -18,6 +18,6 @@ type Record struct {
 	// Whether or not this record is disabled
 	Disabled bool `json:"disabled"`
 
-	// If set to true, the server will find the matching reverse zone and create a PTR there. Existing PTR records are replaced. If no matching reverse Zone, an error is thrown. Only valid in client bodies, only valid for A and AAAA types. Not returned by the server.
+	// If set to true, the server will find the matching reverse zone and create a PTR there. Existing PTR records are replaced. If no matching reverse Zone, an error is thrown. Only valid in client bodies, only valid for A and AAAA types. Not returned by the server. This feature is deprecated and will be removed in 4.3.0.
 	SetPtr bool `json:"set-ptr,omitempty"`
 }

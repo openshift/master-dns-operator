@@ -77,20 +77,30 @@ func (client *Client) ModifyScalingConfigurationWithCallback(request *ModifyScal
 type ModifyScalingConfigurationRequest struct {
 	*requests.RpcRequest
 	ImageId                  string                                      `position:"Query" name:"ImageId"`
+	Memory                   requests.Integer                            `position:"Query" name:"Memory"`
+	HpcClusterId             string                                      `position:"Query" name:"HpcClusterId"`
 	IoOptimized              string                                      `position:"Query" name:"IoOptimized"`
 	InstanceTypes            *[]string                                   `position:"Query" name:"InstanceTypes"  type:"Repeated"`
 	InternetMaxBandwidthOut  requests.Integer                            `position:"Query" name:"InternetMaxBandwidthOut"`
+	SecurityGroupId          string                                      `position:"Query" name:"SecurityGroupId"`
 	KeyPairName              string                                      `position:"Query" name:"KeyPairName"`
 	SpotPriceLimit           *[]ModifyScalingConfigurationSpotPriceLimit `position:"Query" name:"SpotPriceLimit"  type:"Repeated"`
 	SystemDiskCategory       string                                      `position:"Query" name:"SystemDisk.Category"`
 	UserData                 string                                      `position:"Query" name:"UserData"`
+	ResourceGroupId          string                                      `position:"Query" name:"ResourceGroupId"`
 	HostName                 string                                      `position:"Query" name:"HostName"`
 	PasswordInherit          requests.Boolean                            `position:"Query" name:"PasswordInherit"`
 	ImageName                string                                      `position:"Query" name:"ImageName"`
+	InstanceDescription      string                                      `position:"Query" name:"InstanceDescription"`
+	Override                 requests.Boolean                            `position:"Query" name:"Override"`
+	DeploymentSetId          string                                      `position:"Query" name:"DeploymentSetId"`
 	ResourceOwnerAccount     string                                      `position:"Query" name:"ResourceOwnerAccount"`
 	OwnerAccount             string                                      `position:"Query" name:"OwnerAccount"`
+	Cpu                      requests.Integer                            `position:"Query" name:"Cpu"`
+	SystemDiskDiskName       string                                      `position:"Query" name:"SystemDisk.DiskName"`
 	RamRoleName              string                                      `position:"Query" name:"RamRoleName"`
 	OwnerId                  requests.Integer                            `position:"Query" name:"OwnerId"`
+	SecurityGroupIds         *[]string                                   `position:"Query" name:"SecurityGroupIds"  type:"Repeated"`
 	DataDisk                 *[]ModifyScalingConfigurationDataDisk       `position:"Query" name:"DataDisk"  type:"Repeated"`
 	ScalingConfigurationName string                                      `position:"Query" name:"ScalingConfigurationName"`
 	Tags                     string                                      `position:"Query" name:"Tags"`
@@ -100,6 +110,7 @@ type ModifyScalingConfigurationRequest struct {
 	LoadBalancerWeight       requests.Integer                            `position:"Query" name:"LoadBalancerWeight"`
 	SystemDiskSize           requests.Integer                            `position:"Query" name:"SystemDisk.Size"`
 	InternetChargeType       string                                      `position:"Query" name:"InternetChargeType"`
+	SystemDiskDescription    string                                      `position:"Query" name:"SystemDisk.Description"`
 }
 
 // ModifyScalingConfigurationSpotPriceLimit is a repeated param struct in ModifyScalingConfigurationRequest
@@ -110,9 +121,13 @@ type ModifyScalingConfigurationSpotPriceLimit struct {
 
 // ModifyScalingConfigurationDataDisk is a repeated param struct in ModifyScalingConfigurationRequest
 type ModifyScalingConfigurationDataDisk struct {
+	DiskName           string `name:"DiskName"`
 	SnapshotId         string `name:"SnapshotId"`
 	Size               string `name:"Size"`
+	Encrypted          string `name:"Encrypted"`
+	Description        string `name:"Description"`
 	Category           string `name:"Category"`
+	KMSKeyId           string `name:"KMSKeyId"`
 	Device             string `name:"Device"`
 	DeleteWithInstance string `name:"DeleteWithInstance"`
 }

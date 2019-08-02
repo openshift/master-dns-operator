@@ -76,7 +76,10 @@ func (client *Client) QueryAddUserInfoWithCallback(request *QueryAddUserInfoRequ
 // QueryAddUserInfoRequest is the request struct for api QueryAddUserInfo
 type QueryAddUserInfoRequest struct {
 	*requests.RpcRequest
-	IotId string `position:"Body" name:"IotId"`
+	IotId      string `position:"Body" name:"IotId"`
+	GroupId    string `position:"Body" name:"GroupId"`
+	DeviceName string `position:"Body" name:"DeviceName"`
+	ProductKey string `position:"Body" name:"ProductKey"`
 }
 
 // QueryAddUserInfoResponse is the response struct for api QueryAddUserInfo

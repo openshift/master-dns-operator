@@ -76,28 +76,27 @@ func (client *Client) DescribeDcdnUserDomainsWithCallback(request *DescribeDcdnU
 // DescribeDcdnUserDomainsRequest is the request struct for api DescribeDcdnUserDomains
 type DescribeDcdnUserDomainsRequest struct {
 	*requests.RpcRequest
-	OwnerId          requests.Integer `position:"Query" name:"OwnerId"`
-	SecurityToken    string           `position:"Query" name:"SecurityToken"`
-	PageSize         requests.Integer `position:"Query" name:"PageSize"`
-	PageNumber       requests.Integer `position:"Query" name:"PageNumber"`
-	DomainName       string           `position:"Query" name:"DomainName"`
-	DomainStatus     string           `position:"Query" name:"DomainStatus"`
-	DomainSearchType string           `position:"Query" name:"DomainSearchType"`
+	FuncFilter       string           `position:"Query" name:"FuncFilter"`
 	CheckDomainShow  requests.Boolean `position:"Query" name:"CheckDomainShow"`
 	ResourceGroupId  string           `position:"Query" name:"ResourceGroupId"`
+	SecurityToken    string           `position:"Query" name:"SecurityToken"`
+	PageSize         requests.Integer `position:"Query" name:"PageSize"`
+	DomainName       string           `position:"Query" name:"DomainName"`
+	OwnerId          requests.Integer `position:"Query" name:"OwnerId"`
 	FuncId           string           `position:"Query" name:"FuncId"`
-	FuncFilter       string           `position:"Query" name:"FuncFilter"`
+	PageNumber       requests.Integer `position:"Query" name:"PageNumber"`
+	DomainStatus     string           `position:"Query" name:"DomainStatus"`
+	DomainSearchType string           `position:"Query" name:"DomainSearchType"`
 }
 
 // DescribeDcdnUserDomainsResponse is the response struct for api DescribeDcdnUserDomains
 type DescribeDcdnUserDomainsResponse struct {
 	*responses.BaseResponse
-	RequestId   string  `json:"RequestId" xml:"RequestId"`
-	PageNumber  int     `json:"PageNumber" xml:"PageNumber"`
-	PageSize    int     `json:"PageSize" xml:"PageSize"`
-	TotalCount  int     `json:"TotalCount" xml:"TotalCount"`
-	OnlineCount int     `json:"OnlineCount" xml:"OnlineCount"`
-	Domains     Domains `json:"Domains" xml:"Domains"`
+	RequestId  string  `json:"RequestId" xml:"RequestId"`
+	PageNumber int     `json:"PageNumber" xml:"PageNumber"`
+	PageSize   int     `json:"PageSize" xml:"PageSize"`
+	TotalCount int     `json:"TotalCount" xml:"TotalCount"`
+	Domains    Domains `json:"Domains" xml:"Domains"`
 }
 
 // CreateDescribeDcdnUserDomainsRequest creates a request to invoke DescribeDcdnUserDomains API
@@ -105,7 +104,7 @@ func CreateDescribeDcdnUserDomainsRequest() (request *DescribeDcdnUserDomainsReq
 	request = &DescribeDcdnUserDomainsRequest{
 		RpcRequest: &requests.RpcRequest{},
 	}
-	request.InitWithApiInfo("dcdn", "2018-01-15", "DescribeDcdnUserDomains", "dcdn", "openAPI")
+	request.InitWithApiInfo("dcdn", "2018-01-15", "DescribeDcdnUserDomains", "", "")
 	return
 }
 

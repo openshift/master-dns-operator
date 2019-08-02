@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package database
@@ -11,7 +11,7 @@ import (
 // GetBackupRequest wrapper for the GetBackup operation
 type GetBackupRequest struct {
 
-	// The backup OCID.
+	// The backup OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm).
 	BackupId *string `mandatory:"true" contributesTo:"path" name:"backupId"`
 
 	// Unique Oracle-assigned identifier for the request.

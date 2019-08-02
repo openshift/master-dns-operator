@@ -1,4 +1,4 @@
-// Copyright 2017 Istio Authors.
+// Copyright 2017 Istio Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"istio.io/istio/mixer/adapter/metadata"
 	"istio.io/istio/mixer/adapter/prometheus/config"
 	"istio.io/istio/mixer/pkg/adapter"
 	"istio.io/istio/mixer/pkg/pool"
@@ -91,16 +92,9 @@ func GetInfoWithAddr(addr string) (adapter.Info, Server) {
 		srv: newServer(addr),
 	}
 	singletonBuilder.clearState()
-	return adapter.Info{
-		Name:        "prometheus",
-		Impl:        "istio.io/istio/mixer/adapter/prometheus",
-		Description: "Publishes prometheus metrics",
-		SupportedTemplates: []string{
-			metric.TemplateName,
-		},
-		NewBuilder:    func() adapter.HandlerBuilder { return singletonBuilder },
-		DefaultConfig: &config.Params{},
-	}, singletonBuilder.srv
+	info := metadata.GetInfo("prometheus")
+	info.NewBuilder = func() adapter.HandlerBuilder { return singletonBuilder }
+	return info, singletonBuilder.srv
 }
 
 // GetInfo returns the Info associated with this adapter.
@@ -209,7 +203,14 @@ func (b *builder) Build(ctx context.Context, env adapter.Env) (adapter.Handler, 
 		}
 	}
 
-	if err := b.srv.Start(env, promhttp.HandlerFor(b.registry, promhttp.HandlerOpts{})); err != nil {
+	// We want best-effort on metrics generation. It is important to log the failures, however,
+	// to help capture any breakages that may be hidden.
+	opts := promhttp.HandlerOpts{
+		ErrorHandling: promhttp.ContinueOnError,
+		ErrorLog:      &promLogger{logger: env.Logger()},
+	}
+
+	if err := b.srv.Start(env, promhttp.HandlerFor(b.registry, opts)); err != nil {
 		return nil, err
 	}
 
@@ -288,12 +289,12 @@ func key(name, kind string, labels prometheus.Labels, sortedLabelKeys []string) 
 		buf.WriteString(k + "=" + labels[k] + ";") // nolint: gas
 	}
 	h := fnv.New64()
-	buf.WriteTo(h)
+	_, _ = buf.WriteTo(h)
 	pool.PutBuffer(buf)
 	return h.Sum64()
 }
 
-func deleteOldMetrics(key, value interface{}) {
+func deleteOldMetrics(_, value interface{}) {
 	if entry, ok := value.(*cacheEntry); ok {
 		switch v := entry.vec.(type) {
 		case *prometheus.CounterVec:
@@ -431,4 +432,12 @@ func computeSha(m proto.Marshaler, log adapter.Logger) [sha1.Size]byte {
 		log.Warningf("Unable to encode %v", err)
 	}
 	return sha1.Sum(ba)
+}
+
+type promLogger struct {
+	logger adapter.Logger
+}
+
+func (pl *promLogger) Println(v ...interface{}) {
+	_ = pl.logger.Errorf("Prometheus handler error: %s", fmt.Sprintln(v...)) // nolint: gas
 }

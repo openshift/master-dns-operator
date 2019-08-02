@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package dns
@@ -33,7 +33,7 @@ type GetRRSetRequest struct {
 	IfModifiedSince *string `mandatory:"false" contributesTo:"header" name:"If-Modified-Since"`
 
 	// The maximum number of items to return in a page of the collection.
-	Limit *int `mandatory:"false" contributesTo:"query" name:"limit"`
+	Limit *int64 `mandatory:"false" contributesTo:"query" name:"limit"`
 
 	// The value of the `opc-next-page` response header from the previous "List" call.
 	Page *string `mandatory:"false" contributesTo:"query" name:"page"`
@@ -76,10 +76,9 @@ type GetRRSetResponse struct {
 	// A list of RrSet instances
 	RrSet `presentIn:"body"`
 
-	// For pagination of a list of items. When paging through a list, if
-	// this header appears in the response, then a partial list might have
-	// been returned. Include this value as the `page` parameter for the
-	// subsequent GET request to get the next batch of items.
+	// For list pagination. When this header appears in the response, additional pages
+	// of results remain. For important details about how pagination works,
+	// see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	OpcNextPage *string `presentIn:"header" name:"opc-next-page"`
 
 	// The total number of items that match the query.

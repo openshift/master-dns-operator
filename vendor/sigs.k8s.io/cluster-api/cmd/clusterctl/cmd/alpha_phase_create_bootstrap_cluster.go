@@ -17,18 +17,16 @@ limitations under the License.
 package cmd
 
 import (
-	"fmt"
-
-	"github.com/golang/glog"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"sigs.k8s.io/cluster-api/cmd/clusterctl/clusterdeployer/bootstrap/minikube"
+	"k8s.io/klog"
+	"sigs.k8s.io/cluster-api/cmd/clusterctl/clusterdeployer/bootstrap"
 	"sigs.k8s.io/cluster-api/cmd/clusterctl/clusterdeployer/clusterclient"
 	"sigs.k8s.io/cluster-api/cmd/clusterctl/phases"
 )
 
 type AlphaPhaseCreateBootstrapClusterOptions struct {
-	MiniKube         []string
-	VmDriver         string
+	Bootstrap        bootstrap.Options
 	KubeconfigOutput string
 }
 
@@ -40,32 +38,29 @@ var alphaPhaseCreateBootstrapClusterCmd = &cobra.Command{
 	Long:  `Create a bootstrap cluster`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := RunAlphaPhaseCreateBootstrapCluster(pcbco); err != nil {
-			glog.Exit(err)
+			klog.Exit(err)
 		}
 	},
 }
 
 func RunAlphaPhaseCreateBootstrapCluster(pcbco *AlphaPhaseCreateBootstrapClusterOptions) error {
-	if pcbco.VmDriver != "" {
-		pcbco.MiniKube = append(pcbco.MiniKube, fmt.Sprintf("vm-driver=%s", pcbco.VmDriver))
-	}
-
-	bootstrapProvider := minikube.WithOptionsAndKubeConfigPath(pcbco.MiniKube, pcbco.KubeconfigOutput)
-
-	_, _, err := phases.CreateBootstrapCluster(bootstrapProvider, false, clusterclient.NewFactory())
+	bootstrapProvider, err := bootstrap.Get(pcbco.Bootstrap)
 	if err != nil {
-		return fmt.Errorf("failed to create bootstrap cluster: %v", err)
+		return err
 	}
 
-	glog.Infof("Created bootstrap cluster, path to kubeconfig: %q", pcbco.KubeconfigOutput)
+	_, _, err = phases.CreateBootstrapCluster(bootstrapProvider, false, clusterclient.NewFactory())
+	if err != nil {
+		return errors.Wrap(err, "failed to create bootstrap cluster")
+	}
+
+	klog.Infof("Created bootstrap cluster, path to kubeconfig: %q", pcbco.KubeconfigOutput)
 	return nil
 }
 
 func init() {
 	// Optional flags
-	alphaPhaseCreateBootstrapClusterCmd.Flags().StringSliceVarP(&pcbco.MiniKube, "minikube", "", []string{}, "Minikube options")
-	alphaPhaseCreateBootstrapClusterCmd.Flags().StringVarP(&pcbco.VmDriver, "vm-driver", "", "", "Which vm driver to use for minikube")
 	alphaPhaseCreateBootstrapClusterCmd.Flags().StringVarP(&pcbco.KubeconfigOutput, "kubeconfig-out", "", "minikube.kubeconfig", "Where to output the kubeconfig for the bootstrap cluster")
-
+	pcbco.Bootstrap.AddFlags(alphaPhaseCreateBootstrapClusterCmd.Flags())
 	alphaPhasesCmd.AddCommand(alphaPhaseCreateBootstrapClusterCmd)
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // File Storage Service API
@@ -12,7 +12,7 @@ import (
 	"github.com/oracle/oci-go-sdk/common"
 )
 
-// UpdateExportSetDetails The representation of UpdateExportSetDetails
+// UpdateExportSetDetails Details for updating the export set.
 type UpdateExportSetDetails struct {
 
 	// A user-friendly name. It does not have to be unique, and it is changeable.
@@ -29,7 +29,7 @@ type UpdateExportSetDetails struct {
 	// `maxFsStatBytes` minus the metered size of the file
 	// system. If the metered size is larger than `maxFsStatBytes`,
 	// then `fbytes` and `abytes` will both be '0'.
-	MaxFsStatBytes *int `mandatory:"false" json:"maxFsStatBytes"`
+	MaxFsStatBytes *int64 `mandatory:"false" json:"maxFsStatBytes"`
 
 	// Controls the maximum `ffiles`, `ffiles`, and `afiles`
 	// values reported by `NFS FSSTAT` calls through any associated
@@ -40,7 +40,7 @@ type UpdateExportSetDetails struct {
 	// `maxFsStatFiles` minus the metered size of the file
 	// system. If the metered size is larger than `maxFsStatFiles`,
 	// then `ffiles` and `afiles` will both be '0'.
-	MaxFsStatFiles *int `mandatory:"false" json:"maxFsStatFiles"`
+	MaxFsStatFiles *int64 `mandatory:"false" json:"maxFsStatFiles"`
 }
 
 func (m UpdateExportSetDetails) String() string {

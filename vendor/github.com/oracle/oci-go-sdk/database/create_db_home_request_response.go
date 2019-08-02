@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package database
@@ -11,7 +11,7 @@ import (
 // CreateDbHomeRequest wrapper for the CreateDbHome operation
 type CreateDbHomeRequest struct {
 
-	// Request to create a new DB Home.
+	// Request to create a new database home.
 	CreateDbHomeWithDbSystemIdBase `contributesTo:"body"`
 
 	// A token that uniquely identifies a request so it can be retried in case of a timeout or

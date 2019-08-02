@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Database Service API
@@ -13,13 +13,12 @@ import (
 	"github.com/oracle/oci-go-sdk/common"
 )
 
-// CreateDbHomeWithDbSystemIdFromBackupDetails The representation of CreateDbHomeWithDbSystemIdFromBackupDetails
+// CreateDbHomeWithDbSystemIdFromBackupDetails Note that a valid `dbSystemId` value must be supplied for the `CreateDbHomeWithDbSystemIdFromBackup` API operation to successfully complete.
 type CreateDbHomeWithDbSystemIdFromBackupDetails struct {
-
-	// The OCID of the DB System.
-	DbSystemId *string `mandatory:"true" json:"dbSystemId"`
-
 	Database *CreateDatabaseFromBackupDetails `mandatory:"true" json:"database"`
+
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the DB system.
+	DbSystemId *string `mandatory:"false" json:"dbSystemId"`
 
 	// The user-provided name of the database home.
 	DisplayName *string `mandatory:"false" json:"displayName"`

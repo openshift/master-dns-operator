@@ -17,6 +17,7 @@ limitations under the License.
 package bigtable
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math"
@@ -32,7 +33,6 @@ import (
 	lroauto "cloud.google.com/go/longrunning/autogen"
 	"github.com/golang/protobuf/ptypes"
 	durpb "github.com/golang/protobuf/ptypes/duration"
-	"golang.org/x/net/context"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
@@ -385,7 +385,7 @@ func (ac *AdminClient) Snapshots(ctx context.Context, cluster string) *SnapshotI
 		for _, s := range resp.Snapshots {
 			snapshotInfo, err := newSnapshotInfo(s)
 			if err != nil {
-				return "", fmt.Errorf("Failed to parse snapshot proto %v", err)
+				return "", fmt.Errorf("failed to parse snapshot proto %v", err)
 			}
 			it.items = append(it.items, snapshotInfo)
 		}
@@ -407,12 +407,12 @@ func newSnapshotInfo(snapshot *btapb.Snapshot) (*SnapshotInfo, error) {
 
 	createTime, err := ptypes.Timestamp(snapshot.CreateTime)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid createTime: %v", err)
+		return nil, fmt.Errorf("invalid createTime: %v", err)
 	}
 
 	deleteTime, err := ptypes.Timestamp(snapshot.DeleteTime)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid deleteTime: %v", err)
+		return nil, fmt.Errorf("invalid deleteTime: %v", err)
 	}
 
 	return &SnapshotInfo{
@@ -644,14 +644,17 @@ func (st StorageType) proto() btapb.StorageType {
 type InstanceType int32
 
 const (
-	PRODUCTION  InstanceType = InstanceType(btapb.Instance_PRODUCTION)
+	// UNSPECIFIED instance types default to PRODUCTION
+	UNSPECIFIED InstanceType = InstanceType(btapb.Instance_TYPE_UNSPECIFIED)
+	PRODUCTION               = InstanceType(btapb.Instance_PRODUCTION)
 	DEVELOPMENT              = InstanceType(btapb.Instance_DEVELOPMENT)
 )
 
 // InstanceInfo represents information about an instance
 type InstanceInfo struct {
-	Name        string // name of the instance
-	DisplayName string // display name for UIs
+	Name         string // name of the instance
+	DisplayName  string // display name for UIs
+	InstanceType InstanceType
 }
 
 // InstanceConf contains the information necessary to create an Instance
@@ -716,6 +719,73 @@ func (iac *InstanceAdminClient) CreateInstanceWithClusters(ctx context.Context, 
 	return longrunning.InternalNewOperation(iac.lroClient, lro).Wait(ctx, &resp)
 }
 
+// UpdateInstanceWithClusters updates an instance and its clusters.
+// The provided InstanceWithClustersConfig is used as follows:
+// - InstanceID is required
+// - DisplayName and InstanceType are updated only if they are not empty
+// - ClusterID is required for any provided cluster
+// - All other cluster fields are ignored except for NumNodes, which if set will be updated
+//
+// This method may return an error after partially succeeding, for example if the instance is updated
+// but a cluster update fails. If an error is returned, InstanceInfo and Clusters may be called to
+// determine the current state.
+func (iac *InstanceAdminClient) UpdateInstanceWithClusters(ctx context.Context, conf *InstanceWithClustersConfig) error {
+	ctx = mergeOutgoingMetadata(ctx, iac.md)
+
+	if conf.InstanceID == "" {
+		return errors.New("InstanceID is required")
+	}
+	for _, cluster := range conf.Clusters {
+		if cluster.ClusterID == "" {
+			return errors.New("ClusterID is required for every cluster")
+		}
+	}
+
+	// Update the instance, if necessary
+	mask := &field_mask.FieldMask{}
+	ireq := &btapb.PartialUpdateInstanceRequest{
+		Instance: &btapb.Instance{
+			Name: "projects/" + iac.project + "/instances/" + conf.InstanceID,
+		},
+		UpdateMask: mask,
+	}
+	if conf.DisplayName != "" {
+		ireq.Instance.DisplayName = conf.DisplayName
+		mask.Paths = append(mask.Paths, "display_name")
+	}
+	if btapb.Instance_Type(conf.InstanceType) != btapb.Instance_TYPE_UNSPECIFIED {
+		ireq.Instance.Type = btapb.Instance_Type(conf.InstanceType)
+		mask.Paths = append(mask.Paths, "type")
+	}
+	updatedInstance := false
+	if len(mask.Paths) > 0 {
+		lro, err := iac.iClient.PartialUpdateInstance(ctx, ireq)
+		if err != nil {
+			return err
+		}
+		err = longrunning.InternalNewOperation(iac.lroClient, lro).Wait(ctx, nil)
+		if err != nil {
+			return err
+		}
+		updatedInstance = true
+	}
+
+	// Update any clusters
+	for _, cluster := range conf.Clusters {
+		err := iac.UpdateCluster(ctx, conf.InstanceID, cluster.ClusterID, cluster.NumNodes)
+		if err != nil {
+			if updatedInstance {
+				// We updated the instance, so note that in the error message.
+				return fmt.Errorf("UpdateCluster %q failed %v; however UpdateInstance succeeded",
+					cluster.ClusterID, err)
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
 // DeleteInstance deletes an instance from the project.
 func (iac *InstanceAdminClient) DeleteInstance(ctx context.Context, instanceID string) error {
 	ctx = mergeOutgoingMetadata(ctx, iac.md)
@@ -752,8 +822,9 @@ func (iac *InstanceAdminClient) Instances(ctx context.Context) ([]*InstanceInfo,
 			return nil, fmt.Errorf("malformed instance name %q", i.Name)
 		}
 		is = append(is, &InstanceInfo{
-			Name:        m[2],
-			DisplayName: i.DisplayName,
+			Name:         m[2],
+			DisplayName:  i.DisplayName,
+			InstanceType: InstanceType(i.Type),
 		})
 	}
 	return is, nil
@@ -780,8 +851,9 @@ func (iac *InstanceAdminClient) InstanceInfo(ctx context.Context, instanceID str
 		return nil, fmt.Errorf("malformed instance name %q", res.Name)
 	}
 	return &InstanceInfo{
-		Name:        m[2],
-		DisplayName: res.DisplayName,
+		Name:         m[2],
+		DisplayName:  res.DisplayName,
+		InstanceType: InstanceType(res.Type),
 	}, nil
 }
 
@@ -1064,9 +1136,7 @@ func (iac *InstanceAdminClient) ListAppProfiles(ctx context.Context, instanceID 
 			return "", err
 		}
 
-		for _, a := range profileRes.AppProfiles {
-			pit.items = append(pit.items, a)
-		}
+		pit.items = append(pit.items, profileRes.AppProfiles...)
 		return profileRes.NextPageToken, nil
 	}
 

@@ -83,13 +83,14 @@ type GetCategoriesRequest struct {
 	PageSize             requests.Integer `position:"Query" name:"PageSize"`
 	SortBy               string           `position:"Query" name:"SortBy"`
 	OwnerId              string           `position:"Query" name:"OwnerId"`
+	Type                 string           `position:"Query" name:"Type"`
 }
 
 // GetCategoriesResponse is the response struct for api GetCategories
 type GetCategoriesResponse struct {
 	*responses.BaseResponse
 	RequestId     string        `json:"RequestId" xml:"RequestId"`
-	SubTotal      int           `json:"SubTotal" xml:"SubTotal"`
+	SubTotal      int64         `json:"SubTotal" xml:"SubTotal"`
 	Category      Category      `json:"Category" xml:"Category"`
 	SubCategories SubCategories `json:"SubCategories" xml:"SubCategories"`
 }

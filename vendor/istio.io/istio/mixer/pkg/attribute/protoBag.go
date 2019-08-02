@@ -23,8 +23,6 @@ import (
 	mixerpb "istio.io/api/mixer/v1"
 )
 
-// TODO: consider implementing a pool of proto bags
-
 type attributeRef struct {
 	Name   string
 	MapKey string
@@ -52,48 +50,36 @@ type ProtoBag struct {
 	referencedAttrsMutex sync.Mutex
 }
 
-// NewProtoBag creates a new proto-based attribute bag.
-func NewProtoBag(proto *mixerpb.CompressedAttributes, globalDict map[string]int32, globalWordList []string) *ProtoBag {
+// referencedAttrsSize is the size of referenced attributes.
+const referencedAttrsSize = 16
+
+var protoBags = sync.Pool{
+	New: func() interface{} {
+		return &ProtoBag{
+			referencedAttrs: make(map[attributeRef]mixerpb.ReferencedAttributes_Condition, referencedAttrsSize),
+		}
+	},
+}
+
+// GetProtoBag returns a proto-based attribute bag.
+// When you are done using the proto bag, call the Done method to recycle it.
+func GetProtoBag(proto *mixerpb.CompressedAttributes, globalDict map[string]int32, globalWordList []string) *ProtoBag {
+	pb := protoBags.Get().(*ProtoBag)
+
 	// build the message-level dictionary
 	d := make(map[string]int32, len(proto.Words))
 	for i, name := range proto.Words {
 		d[name] = slotToIndex(i)
 	}
 
-	out := &ProtoBag{
-		proto:           proto,
-		globalDict:      globalDict,
-		globalWordList:  globalWordList,
-		messageDict:     d,
-		referencedAttrs: make(map[attributeRef]mixerpb.ReferencedAttributes_Condition, 16),
-	}
+	pb.proto = proto
+	pb.globalDict = globalDict
+	pb.globalWordList = globalWordList
+	pb.messageDict = d
 
-	scope.Debugf("Creating bag with attributes: %v", out)
+	scope.Debugf("Returning bag with attributes:\n%v", pb)
 
-	return out
-}
-
-// StringMap wraps a map[string]string and reference counts it
-type StringMap struct {
-	// name of the stringmap  -- request.headers
-	name string
-	// entries in the stringmap
-	entries map[string]string
-	// protoBag that owns this stringmap
-	pb *ProtoBag
-}
-
-// Get returns a stringmap value and records access
-func (s StringMap) Get(key string) (string, bool) {
-	cond := mixerpb.ABSENCE
-	str, found := s.entries[key]
-
-	if found {
-		cond = mixerpb.EXACT
-	}
-	// TODO add REGEX condition
-	s.pb.trackMapReference(s.name, key, cond)
-	return str, found
+	return pb
 }
 
 // Get returns an attribute value.
@@ -421,7 +407,22 @@ func (pb *ProtoBag) Names() []string {
 
 // Done indicates the bag can be reclaimed.
 func (pb *ProtoBag) Done() {
-	// NOP
+	pb.Reset()
+	protoBags.Put(pb)
+}
+
+// Reset removes all local state.
+func (pb *ProtoBag) Reset() {
+	pb.proto = nil
+	pb.globalDict = make(map[string]int32)
+	pb.globalWordList = nil
+	pb.messageDict = make(map[string]int32)
+	pb.stringMapMutex.Lock()
+	pb.convertedStringMaps = make(map[int32]StringMap)
+	pb.stringMapMutex.Unlock()
+	pb.referencedAttrsMutex.Lock()
+	pb.referencedAttrs = make(map[attributeRef]mixerpb.ReferencedAttributes_Condition, referencedAttrsSize)
+	pb.referencedAttrsMutex.Unlock()
 }
 
 // String runs through the named attributes, looks up their values,

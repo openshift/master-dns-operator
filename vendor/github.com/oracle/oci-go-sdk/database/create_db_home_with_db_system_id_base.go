@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Database Service API
@@ -13,10 +13,11 @@ import (
 	"github.com/oracle/oci-go-sdk/common"
 )
 
-// CreateDbHomeWithDbSystemIdBase The representation of CreateDbHomeWithDbSystemIdBase
+// CreateDbHomeWithDbSystemIdBase Details for creating a database home.
+// **Warning:** Oracle recommends that you avoid using any confidential information when you supply string values using the API.
 type CreateDbHomeWithDbSystemIdBase interface {
 
-	// The OCID of the DB System.
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the DB system.
 	GetDbSystemId() *string
 
 	// The user-provided name of the database home.
@@ -25,7 +26,7 @@ type CreateDbHomeWithDbSystemIdBase interface {
 
 type createdbhomewithdbsystemidbase struct {
 	JsonData    []byte
-	DbSystemId  *string `mandatory:"true" json:"dbSystemId"`
+	DbSystemId  *string `mandatory:"false" json:"dbSystemId"`
 	DisplayName *string `mandatory:"false" json:"displayName"`
 	Source      string  `json:"source"`
 }
@@ -50,6 +51,11 @@ func (m *createdbhomewithdbsystemidbase) UnmarshalJSON(data []byte) error {
 
 // UnmarshalPolymorphicJSON unmarshals polymorphic json
 func (m *createdbhomewithdbsystemidbase) UnmarshalPolymorphicJSON(data []byte) (interface{}, error) {
+
+	if data == nil || string(data) == "null" {
+		return nil, nil
+	}
+
 	var err error
 	switch m.Source {
 	case "DB_BACKUP":
@@ -61,7 +67,7 @@ func (m *createdbhomewithdbsystemidbase) UnmarshalPolymorphicJSON(data []byte) (
 		err = json.Unmarshal(data, &mm)
 		return mm, err
 	default:
-		return m, nil
+		return *m, nil
 	}
 }
 

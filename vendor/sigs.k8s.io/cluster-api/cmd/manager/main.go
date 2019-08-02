@@ -17,47 +17,65 @@ limitations under the License.
 package main
 
 import (
-	"log"
-
 	"flag"
+	"time"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"k8s.io/klog"
+	"k8s.io/klog/klogr"
 	"sigs.k8s.io/cluster-api/pkg/apis"
 	"sigs.k8s.io/cluster-api/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
 )
 
 func main() {
-	flag.Parse()
+	flag.Set("logtostderr", "true")
+	klog.InitFlags(nil)
+	watchNamespace := flag.String("namespace", "",
+		"Namespace that the controller watches to reconcile cluster-api objects. If unspecified, the controller watches for cluster-api objects across all namespaces.")
 
-	// Get a config to talk to the apiserver
+	flag.Parse()
+	if *watchNamespace != "" {
+		klog.Infof("Watching cluster-api objects only in namespace %q for reconciliation", *watchNamespace)
+	}
+
+	// Setup controller-runtime logger.
+	log.SetLogger(klogr.New())
+
+	// Get a config to talk to the api-server.
 	cfg, err := config.GetConfig()
 	if err != nil {
-		log.Fatal(err)
+		klog.Fatal(err)
 	}
 
-	// Create a new Cmd to provide shared dependencies and start components
-	mgr, err := manager.New(cfg, manager.Options{})
+	// Create a new Cmd to provide shared dependencies and start components.
+	syncPeriod := 10 * time.Minute
+	mgr, err := manager.New(cfg, manager.Options{
+		SyncPeriod: &syncPeriod,
+		Namespace:  *watchNamespace,
+	})
+
 	if err != nil {
-		log.Fatal(err)
+		klog.Fatalf("Failed to create new Manager: %v", err)
 	}
 
-	log.Printf("Registering Components.")
+	klog.Info("Registering Components")
 
-	// Setup Scheme for all resources
+	// Setup Scheme for all resources.
 	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
-		log.Fatal(err)
+		klog.Fatal(err)
 	}
 
-	// Setup all Controllers
+	// Setup all Controllers.
 	if err := controller.AddToManager(mgr); err != nil {
-		log.Fatal(err)
+		klog.Fatal(err)
 	}
 
-	log.Printf("Starting the Cmd.")
+	klog.Info("Starting the Cmd")
 
 	// Start the Cmd
-	log.Fatal(mgr.Start(signals.SetupSignalHandler()))
+	klog.Fatal(mgr.Start(signals.SetupSignalHandler()))
 }

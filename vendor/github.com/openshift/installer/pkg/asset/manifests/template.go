@@ -6,35 +6,65 @@ type AwsCredsSecretData struct {
 	Base64encodeSecretAccessKey string
 }
 
+// AzureCredsSecretData holds encoded credentials and is used to generate cloud-creds secret
+type AzureCredsSecretData struct {
+	Base64encodeSubscriptionID string
+	Base64encodeClientID       string
+	Base64encodeClientSecret   string
+	Base64encodeTenantID       string
+	Base64encodeResourcePrefix string
+	Base64encodeResourceGroup  string
+	Base64encodeRegion         string
+}
+
+// GCPCredsSecretData holds encoded credentials and is used to generate cloud-creds secret
+type GCPCredsSecretData struct {
+	Base64encodeServiceAccount string
+}
+
 // OpenStackCredsSecretData holds encoded credentials and is used to generate cloud-creds secret
 type OpenStackCredsSecretData struct {
-	Base64encodeCloudCreds string
+	Base64encodeCloudCreds    string
+	Base64encodeCloudCredsINI string
+}
+
+// VSphereCredsSecretData holds encoded credentials and is used to generated cloud-creds secret
+type VSphereCredsSecretData struct {
+	VCenter              string
+	Base64encodeUsername string
+	Base64encodePassword string
 }
 
 type cloudCredsSecretData struct {
 	AWS       *AwsCredsSecretData
+	Azure     *AzureCredsSecretData
+	GCP       *GCPCredsSecretData
 	OpenStack *OpenStackCredsSecretData
+	VSphere   *VSphereCredsSecretData
 }
 
 type bootkubeTemplateData struct {
-	Base64encodeCloudProviderConfig string
-	EtcdCaCert                      string
-	EtcdClientCert                  string
-	EtcdClientKey                   string
-	KubeCaCert                      string
-	KubeCaKey                       string
-	McsTLSCert                      string
-	McsTLSKey                       string
-	PullSecretBase64                string
-	RootCaCert                      string
-	ServiceServingCaCert            string
-	ServiceServingCaKey             string
-	WorkerIgnConfig                 string
-	CVOClusterID                    string
-	EtcdEndpointHostnames           []string
-	EtcdEndpointDNSSuffix           string
+	CVOClusterID               string
+	EtcdCaBundle               string
+	EtcdEndpointDNSSuffix      string
+	EtcdEndpointHostnames      []string
+	EtcdMetricCaCert           string
+	EtcdMetricSignerCert       string
+	EtcdMetricSignerClientCert string
+	EtcdMetricSignerClientKey  string
+	EtcdMetricSignerKey        string
+	EtcdSignerCert             string
+	EtcdSignerClientCert       string
+	EtcdSignerClientKey        string
+	EtcdSignerKey              string
+	McsTLSCert                 string
+	McsTLSKey                  string
+	PullSecretBase64           string
+	RootCaCert                 string
+	WorkerIgnConfig            string
 }
 
-type tectonicTemplateData struct {
-	CloudCreds cloudCredsSecretData
+type openshiftTemplateData struct {
+	CloudCreds                   cloudCredsSecretData
+	Base64EncodedKubeadminPwHash string
 }

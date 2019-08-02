@@ -1,9 +1,13 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// APIs for Networking Service, Compute Service, and Block Volume Service.
+// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
+// to manage resources such as virtual cloud networks (VCNs), compute instances, and
+// block storage volumes.
 //
 
 package core
@@ -14,13 +18,15 @@ import (
 )
 
 // BootVolume A detachable boot volume device that contains the image used to boot a Compute instance. For more information, see
-// Overview of Boot Volumes (https://docs.us-phoenix-1.oraclecloud.com/Content/Block/Concepts/bootvolumes.htm).
+// Overview of Boot Volumes (https://docs.cloud.oracle.com/Content/Block/Concepts/bootvolumes.htm).
 // To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized,
 // talk to an administrator. If you're an administrator who needs to write policies to give users access, see
-// Getting Started with Policies (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/policygetstarted.htm).
+// Getting Started with Policies (https://docs.cloud.oracle.com/Content/Identity/Concepts/policygetstarted.htm).
+// **Warning:** Oracle recommends that you avoid using any confidential information when you
+// supply string values using the API.
 type BootVolume struct {
 
-	// The Availability Domain of the boot volume.
+	// The availability domain of the boot volume.
 	// Example: `Uocm:PHX-AD-1`
 	AvailabilityDomain *string `mandatory:"true" json:"availabilityDomain"`
 
@@ -35,13 +41,13 @@ type BootVolume struct {
 
 	// The size of the volume in MBs. The value must be a multiple of 1024.
 	// This field is deprecated. Please use sizeInGBs.
-	SizeInMBs *int `mandatory:"true" json:"sizeInMBs"`
+	SizeInMBs *int64 `mandatory:"true" json:"sizeInMBs"`
 
 	// The date and time the boot volume was created. Format defined by RFC3339.
 	TimeCreated *common.SDKTime `mandatory:"true" json:"timeCreated"`
 
-	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// Defined tags for this resource. Each key is predefined and scoped to a
+	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -50,8 +56,7 @@ type BootVolume struct {
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
-	// predefined name, type, or namespace. For more information, see
-	// Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
@@ -62,14 +67,17 @@ type BootVolume struct {
 	IsHydrated *bool `mandatory:"false" json:"isHydrated"`
 
 	// The size of the boot volume in GBs.
-	SizeInGBs *int `mandatory:"false" json:"sizeInGBs"`
+	SizeInGBs *int64 `mandatory:"false" json:"sizeInGBs"`
 
-	// The boot volume source, either an existing boot volume in the same Availability Domain or a boot volume backup.
+	// The boot volume source, either an existing boot volume in the same availability domain or a boot volume backup.
 	// If null, this means that the boot volume was created from an image.
 	SourceDetails BootVolumeSourceDetails `mandatory:"false" json:"sourceDetails"`
 
 	// The OCID of the source volume group.
 	VolumeGroupId *string `mandatory:"false" json:"volumeGroupId"`
+
+	// The OCID of the KMS key which is the master encryption key for the boot volume.
+	KmsKeyId *string `mandatory:"false" json:"kmsKeyId"`
 }
 
 func (m BootVolume) String() string {
@@ -84,14 +92,15 @@ func (m *BootVolume) UnmarshalJSON(data []byte) (e error) {
 		FreeformTags       map[string]string                 `json:"freeformTags"`
 		ImageId            *string                           `json:"imageId"`
 		IsHydrated         *bool                             `json:"isHydrated"`
-		SizeInGBs          *int                              `json:"sizeInGBs"`
+		SizeInGBs          *int64                            `json:"sizeInGBs"`
 		SourceDetails      bootvolumesourcedetails           `json:"sourceDetails"`
 		VolumeGroupId      *string                           `json:"volumeGroupId"`
+		KmsKeyId           *string                           `json:"kmsKeyId"`
 		AvailabilityDomain *string                           `json:"availabilityDomain"`
 		CompartmentId      *string                           `json:"compartmentId"`
 		Id                 *string                           `json:"id"`
 		LifecycleState     BootVolumeLifecycleStateEnum      `json:"lifecycleState"`
-		SizeInMBs          *int                              `json:"sizeInMBs"`
+		SizeInMBs          *int64                            `json:"sizeInMBs"`
 		TimeCreated        *common.SDKTime                   `json:"timeCreated"`
 	}{}
 
@@ -109,8 +118,13 @@ func (m *BootVolume) UnmarshalJSON(data []byte) (e error) {
 	if e != nil {
 		return
 	}
-	m.SourceDetails = nn.(BootVolumeSourceDetails)
+	if nn != nil {
+		m.SourceDetails = nn.(BootVolumeSourceDetails)
+	} else {
+		m.SourceDetails = nil
+	}
 	m.VolumeGroupId = model.VolumeGroupId
+	m.KmsKeyId = model.KmsKeyId
 	m.AvailabilityDomain = model.AvailabilityDomain
 	m.CompartmentId = model.CompartmentId
 	m.Id = model.Id
@@ -123,7 +137,7 @@ func (m *BootVolume) UnmarshalJSON(data []byte) (e error) {
 // BootVolumeLifecycleStateEnum Enum with underlying type: string
 type BootVolumeLifecycleStateEnum string
 
-// Set of constants representing the allowable values for BootVolumeLifecycleState
+// Set of constants representing the allowable values for BootVolumeLifecycleStateEnum
 const (
 	BootVolumeLifecycleStateProvisioning BootVolumeLifecycleStateEnum = "PROVISIONING"
 	BootVolumeLifecycleStateRestoring    BootVolumeLifecycleStateEnum = "RESTORING"
@@ -142,7 +156,7 @@ var mappingBootVolumeLifecycleState = map[string]BootVolumeLifecycleStateEnum{
 	"FAULTY":       BootVolumeLifecycleStateFaulty,
 }
 
-// GetBootVolumeLifecycleStateEnumValues Enumerates the set of values for BootVolumeLifecycleState
+// GetBootVolumeLifecycleStateEnumValues Enumerates the set of values for BootVolumeLifecycleStateEnum
 func GetBootVolumeLifecycleStateEnumValues() []BootVolumeLifecycleStateEnum {
 	values := make([]BootVolumeLifecycleStateEnum, 0)
 	for _, v := range mappingBootVolumeLifecycleState {

@@ -89,8 +89,8 @@ type GetMezzanineInfoRequest struct {
 // GetMezzanineInfoResponse is the response struct for api GetMezzanineInfo
 type GetMezzanineInfoResponse struct {
 	*responses.BaseResponse
-	RequestId string    `json:"RequestId" xml:"RequestId"`
-	Mezzanine Mezzanine `json:"Mezzanine" xml:"Mezzanine"`
+	RequestId string                      `json:"RequestId" xml:"RequestId"`
+	Mezzanine MezzanineInGetMezzanineInfo `json:"Mezzanine" xml:"Mezzanine"`
 }
 
 // CreateGetMezzanineInfoRequest creates a request to invoke GetMezzanineInfo API

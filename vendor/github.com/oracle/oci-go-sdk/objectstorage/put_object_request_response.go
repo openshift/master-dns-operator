@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package objectstorage
@@ -12,7 +12,7 @@ import (
 // PutObjectRequest wrapper for the PutObject operation
 type PutObjectRequest struct {
 
-	// The top-level namespace used for the request.
+	// The Object Storage namespace used for the request.
 	NamespaceName *string `mandatory:"true" contributesTo:"path" name:"namespaceName"`
 
 	// The name of the bucket. Avoid entering confidential information.
@@ -24,17 +24,18 @@ type PutObjectRequest struct {
 	ObjectName *string `mandatory:"true" contributesTo:"path" name:"objectName"`
 
 	// The content length of the body.
-	ContentLength *int `mandatory:"true" contributesTo:"header" name:"Content-Length"`
+	ContentLength *int64 `mandatory:"true" contributesTo:"header" name:"Content-Length"`
 
 	// The object to upload to the object store.
 	PutObjectBody io.ReadCloser `mandatory:"true" contributesTo:"body" encoding:"binary"`
 
-	// The entity tag to match. For creating and committing a multipart upload to an object, this is the entity tag of the target object.
+	// The entity tag (ETag) to match. For creating and committing a multipart upload to an object, this is the entity tag of the target object.
 	// For uploading a part, this is the entity tag of the target part.
 	IfMatch *string `mandatory:"false" contributesTo:"header" name:"if-match"`
 
-	// The entity tag to avoid matching. The only valid value is ‘*’, which indicates that the request should fail if the object already exists.
-	// For creating and committing a multipart upload, this is the entity tag of the target object. For uploading a part, this is the entity tag of the target part.
+	// The entity tag (ETag) to avoid matching. The only valid value is '*', which indicates that the request should fail if the object
+	// already exists. For creating and committing a multipart upload, this is the entity tag of the target object. For uploading a
+	// part, this is the entity tag of the target part.
 	IfNoneMatch *string `mandatory:"false" contributesTo:"header" name:"if-none-match"`
 
 	// The client request ID for tracing.
@@ -43,7 +44,10 @@ type PutObjectRequest struct {
 	// 100-continue
 	Expect *string `mandatory:"false" contributesTo:"header" name:"Expect"`
 
-	// The base-64 encoded MD5 hash of the body.
+	// The base-64 encoded MD5 hash of the body. If the Content-MD5 header is present, Object Storage performs an integrity check
+	// on the body of the HTTP request by computing the MD5 hash for the body and comparing it to the MD5 hash supplied in the header.
+	// If the two hashes do not match, the object is rejected and an HTTP-400 Unmatched Content MD5 error is returned with the message:
+	// "The computed MD5 of the request body (ACTUAL_MD5) does not match the Content-MD5 header (HEADER_MD5)"
 	ContentMD5 *string `mandatory:"false" contributesTo:"header" name:"Content-MD5"`
 
 	// The content type of the object.  Defaults to 'application/octet-stream' if not overridden during the PutObject call.
@@ -93,7 +97,7 @@ type PutObjectResponse struct {
 	// The base-64 encoded MD5 hash of the request body as computed by the server.
 	OpcContentMd5 *string `presentIn:"header" name:"opc-content-md5"`
 
-	// The entity tag for the object.
+	// The entity tag (ETag) for the object.
 	ETag *string `presentIn:"header" name:"etag"`
 
 	// The time the object was modified, as described in RFC 2616 (https://tools.ietf.org/rfc/rfc2616), section 14.29.

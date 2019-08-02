@@ -337,6 +337,54 @@ func CreateGenericContainer(t *testing.T, client *gophercloud.ServiceClient, sec
 	return container, nil
 }
 
+// ReplaceGenericContainerSecretRef will replace the container old secret
+// reference with a new one. An error will be returned if the reference could
+// not be replaced.
+func ReplaceGenericContainerSecretRef(t *testing.T, client *gophercloud.ServiceClient, container *containers.Container, secretOld *secrets.Secret, secretNew *secrets.Secret) error {
+	containerID, err := ParseID(container.ContainerRef)
+	if err != nil {
+		return err
+	}
+
+	t.Logf("Attempting to remove an old secret reference %s", secretOld.SecretRef)
+
+	res1 := containers.DeleteSecretRef(client, containerID, containers.SecretRef{Name: secretOld.Name, SecretRef: secretOld.SecretRef})
+	if res1.Err != nil {
+		return res1.Err
+	}
+
+	t.Logf("Successfully removed old secret reference: %s", secretOld.SecretRef)
+
+	t.Logf("Attempting to remove a new secret reference %s", secretNew.SecretRef)
+
+	newRef := containers.SecretRef{Name: secretNew.Name, SecretRef: secretNew.SecretRef}
+	res2 := containers.CreateSecretRef(client, containerID, newRef)
+	if res2.Err != nil {
+		return res2.Err
+	}
+
+	c, err := res2.Extract()
+	if err != nil {
+		return err
+	}
+	tools.PrintResource(t, c)
+
+	t.Logf("Successfully created new secret reference: %s", secretNew.SecretRef)
+
+	updatedContainer, err := containers.Get(client, containerID).Extract()
+	if err != nil {
+		return err
+	}
+
+	tools.PrintResource(t, container)
+
+	th.AssertEquals(t, updatedContainer.Name, container.Name)
+	th.AssertEquals(t, updatedContainer.Type, container.Type)
+	th.AssertEquals(t, updatedContainer.SecretRefs[0], newRef)
+
+	return nil
+}
+
 // CreatePassphraseSecret will create a random passphrase secret.
 // An error will be returned if the secret could not be created.
 func CreatePassphraseSecret(t *testing.T, client *gophercloud.ServiceClient, passphrase string) (*secrets.Secret, error) {
@@ -470,6 +518,7 @@ func CreateSecretWithPayload(t *testing.T, client *gophercloud.ServiceClient, pa
 
 	t.Logf("Attempting to create secret %s", secretName)
 
+	expiration := time.Date(2049, 1, 1, 1, 1, 1, 0, time.UTC)
 	createOpts := secrets.CreateOpts{
 		Algorithm:          "aes",
 		BitLength:          256,
@@ -478,6 +527,7 @@ func CreateSecretWithPayload(t *testing.T, client *gophercloud.ServiceClient, pa
 		Payload:            payload,
 		PayloadContentType: "text/plain",
 		SecretType:         secrets.OpaqueSecret,
+		Expiration:         &expiration,
 	}
 
 	secret, err := secrets.Create(client, createOpts).Extract()
@@ -501,6 +551,7 @@ func CreateSecretWithPayload(t *testing.T, client *gophercloud.ServiceClient, pa
 
 	th.AssertEquals(t, secret.Name, secretName)
 	th.AssertEquals(t, secret.Algorithm, "aes")
+	th.AssertEquals(t, secret.Expiration, expiration)
 
 	return secret, nil
 }

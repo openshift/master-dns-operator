@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate sh -c "./generate.sh config.go > types.go"
-
 // Package crd provides an implementation of the config store and cache
 // using Kubernetes Custom Resources and the informer framework from Kubernetes
 package crd
 
 import (
+	"context"
 	"fmt"
 	"time"
 
+	"github.com/golang/sync/errgroup"
 	multierror "github.com/hashicorp/go-multierror"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -30,11 +30,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-	"k8s.io/apimachinery/pkg/util/wait"
-
-	// import GKE cluster authentication plugin
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	// import OIDC cluster authentication plugin, e.g. for Tectonic
+	"k8s.io/apimachinery/pkg/util/wait"             // import GKE cluster authentication plugin
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // import OIDC cluster authentication plugin, e.g. for Tectonic
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 	"k8s.io/client-go/rest"
 
@@ -104,8 +101,8 @@ func newClientSet(descriptor model.ConfigDescriptor) (map[string]*restClient, er
 			// create a new client if one doesn't already exist
 			rc = &restClient{
 				apiVersion: schema.GroupVersion{
-					ResourceGroup(&typ),
-					typ.Version,
+					Group:   ResourceGroup(&typ),
+					Version: typ.Version,
 				},
 			}
 			cs[apiVersion(&typ)] = rc
@@ -116,8 +113,8 @@ func newClientSet(descriptor model.ConfigDescriptor) (map[string]*restClient, er
 	return cs, nil
 }
 
-func (rc *restClient) init(kubeconfig string, context string) error {
-	cfg, err := rc.createRESTConfig(kubeconfig, context)
+func (rc *restClient) init(cfg *rest.Config) error {
+	cfg, err := rc.updateRESTConfig(cfg)
 	if err != nil {
 		return err
 	}
@@ -133,13 +130,8 @@ func (rc *restClient) init(kubeconfig string, context string) error {
 }
 
 // createRESTConfig for cluster API server, pass empty config file for in-cluster
-func (rc *restClient) createRESTConfig(kubeconfig string, context string) (config *rest.Config, err error) {
-	config, err = kubecfg.BuildClientConfig(kubeconfig, context)
-
-	if err != nil {
-		return nil, err
-	}
-
+func (rc *restClient) updateRESTConfig(cfg *rest.Config) (config *rest.Config, err error) {
+	config = cfg
 	config.GroupVersion = &rc.apiVersion
 	config.APIPath = "/apis"
 	config.ContentType = runtime.ContentTypeJSON
@@ -159,11 +151,8 @@ func (rc *restClient) createRESTConfig(kubeconfig string, context string) (confi
 	return
 }
 
-// NewClient creates a client to Kubernetes API using a kubeconfig file.
-// Use an empty value for `kubeconfig` to use the in-cluster config.
-// If the kubeconfig file is empty, defaults to in-cluster config as well.
-// You can also choose a config context by providing the desired context name.
-func NewClient(config string, context string, descriptor model.ConfigDescriptor, domainSuffix string) (*Client, error) {
+// NewForConfig creates a client to the Kubernetes API using a rest config.
+func NewForConfig(cfg *rest.Config, descriptor model.ConfigDescriptor, domainSuffix string) (*Client, error) {
 	cs, err := newClientSet(descriptor)
 	if err != nil {
 		return nil, err
@@ -175,7 +164,7 @@ func NewClient(config string, context string, descriptor model.ConfigDescriptor,
 	}
 
 	for _, v := range out.clientset {
-		if err := v.init(config, context); err != nil {
+		if err := v.init(cfg); err != nil {
 			return nil, err
 		}
 	}
@@ -183,15 +172,30 @@ func NewClient(config string, context string, descriptor model.ConfigDescriptor,
 	return out, nil
 }
 
+// NewClient creates a client to Kubernetes API using a kubeconfig file.
+// Use an empty value for `kubeconfig` to use the in-cluster config.
+// If the kubeconfig file is empty, defaults to in-cluster config as well.
+// You can also choose a config context by providing the desired context name.
+func NewClient(config string, context string, descriptor model.ConfigDescriptor, domainSuffix string) (*Client, error) {
+	cfg, err := kubecfg.BuildClientConfig(config, context)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewForConfig(cfg, descriptor, domainSuffix)
+}
+
 // RegisterResources sends a request to create CRDs and waits for them to initialize
 func (cl *Client) RegisterResources() error {
+	g, _ := errgroup.WithContext(context.Background())
 	for k, rc := range cl.clientset {
-		log.Infof("registering for apiVersion %v", k)
-		if err := rc.registerResources(); err != nil {
-			return err
-		}
+		k, rc := k, rc
+		g.Go(func() error {
+			log.Infof("registering for apiVersion %v", k)
+			return rc.registerResources()
+		})
 	}
-	return nil
+	return g.Wait()
 }
 
 func (rc *restClient) registerResources() error {
@@ -246,7 +250,7 @@ func (rc *restClient) registerResources() error {
 				Scope:   crdScope,
 				Names: apiextensionsv1beta1.CustomResourceDefinitionNames{
 					Plural: ResourceName(schema.Plural),
-					Kind:   KabobCaseToCamelCase(schema.Type),
+					Kind:   KebabCaseToCamelCase(schema.Type),
 				},
 			},
 		}
@@ -296,7 +300,7 @@ func (rc *restClient) registerResources() error {
 // DeregisterResources removes third party resources
 func (cl *Client) DeregisterResources() error {
 	for k, rc := range cl.clientset {
-		log.Infof("deregistering for apiVersion ", k)
+		log.Infof("deregistering for apiVersion %s", k)
 		if err := rc.deregisterResources(); err != nil {
 			return err
 		}
@@ -329,22 +333,22 @@ func (cl *Client) ConfigDescriptor() model.ConfigDescriptor {
 }
 
 // Get implements store interface
-func (cl *Client) Get(typ, name, namespace string) (*model.Config, bool) {
+func (cl *Client) Get(typ, name, namespace string) *model.Config {
 	s, ok := knownTypes[typ]
 	if !ok {
 		log.Warn("unknown type " + typ)
-		return nil, false
+		return nil
 	}
 	rc, ok := cl.clientset[apiVersion(&s.schema)]
 	if !ok {
 		log.Warn("cannot find client for type " + typ)
-		return nil, false
+		return nil
 	}
 
 	schema, exists := rc.descriptor.GetByType(typ)
 	if !exists {
 		log.Warn("cannot find proto schema for type " + typ)
-		return nil, false
+		return nil
 	}
 
 	config := s.object.DeepCopyObject().(IstioObject)
@@ -356,15 +360,15 @@ func (cl *Client) Get(typ, name, namespace string) (*model.Config, bool) {
 
 	if err != nil {
 		log.Warna(err)
-		return nil, false
+		return nil
 	}
 
 	out, err := ConvertObject(schema, config, cl.domainSuffix)
 	if err != nil {
 		log.Warna(err)
-		return nil, false
+		return nil
 	}
-	return out, true
+	return out
 }
 
 // Create implements store interface

@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Database Service API
@@ -15,7 +15,7 @@ import (
 // ReinstateDataGuardAssociationDetails The Data Guard association reinstate parameters.
 type ReinstateDataGuardAssociationDetails struct {
 
-	// The DB System administrator password.
+	// The DB system administrator password.
 	DatabaseAdminPassword *string `mandatory:"true" json:"databaseAdminPassword"`
 }
 

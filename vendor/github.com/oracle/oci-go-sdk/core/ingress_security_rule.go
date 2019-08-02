@@ -1,9 +1,13 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// APIs for Networking Service, Compute Service, and Block Volume Service.
+// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
+// to manage resources such as virtual cloud networks (VCNs), compute instances, and
+// block storage volumes.
 //
 
 package core
@@ -21,10 +25,13 @@ type IngressSecurityRule struct {
 	// Options are supported only for ICMP ("1"), TCP ("6"), and UDP ("17").
 	Protocol *string `mandatory:"true" json:"protocol"`
 
-	// The source service cidrBlock or source IP address range in CIDR notation for the ingress rule. This is the
-	// range of IP addresses that a packet coming into the instance can come from.
-	// Examples: `10.12.0.0/16`
-	//           `oci-phx-objectstorage`
+	// Conceptually, this is the range of IP addresses that a packet coming into the instance
+	// can come from.
+	// Allowed values:
+	//   * IP address range in CIDR notation. For example: `192.168.1.0/24`
+	//   * The `cidrBlock` value for a Service, if you're
+	//     setting up a security list rule for traffic coming from a particular `Service` through
+	//     a service gateway. For example: `oci-phx-objectstorage`.
 	Source *string `mandatory:"true" json:"source"`
 
 	// Optional and valid only for ICMP. Use to specify a particular ICMP type and code
@@ -44,9 +51,11 @@ type IngressSecurityRule struct {
 	// and a corresponding rule is not necessary for bidirectional traffic.
 	IsStateless *bool `mandatory:"false" json:"isStateless"`
 
-	// Type of source for IngressSecurityRule. SERVICE_CIDR_BLOCK should be used if source is a service cidrBlock.
-	// CIDR_BLOCK should be used if source is IP address range in CIDR notation. It defaults to CIDR_BLOCK, if
-	// not specified.
+	// Type of source for the rule. The default is `CIDR_BLOCK`.
+	//   * `CIDR_BLOCK`: If the rule's `source` is an IP address range in CIDR notation.
+	//   * `SERVICE_CIDR_BLOCK`: If the rule's `source` is the `cidrBlock` value for a
+	//     Service (the rule is for traffic coming from a
+	//     particular `Service` through a service gateway).
 	SourceType IngressSecurityRuleSourceTypeEnum `mandatory:"false" json:"sourceType,omitempty"`
 
 	// Optional and valid only for TCP. Use to specify particular destination ports for TCP rules.
@@ -65,7 +74,7 @@ func (m IngressSecurityRule) String() string {
 // IngressSecurityRuleSourceTypeEnum Enum with underlying type: string
 type IngressSecurityRuleSourceTypeEnum string
 
-// Set of constants representing the allowable values for IngressSecurityRuleSourceType
+// Set of constants representing the allowable values for IngressSecurityRuleSourceTypeEnum
 const (
 	IngressSecurityRuleSourceTypeCidrBlock        IngressSecurityRuleSourceTypeEnum = "CIDR_BLOCK"
 	IngressSecurityRuleSourceTypeServiceCidrBlock IngressSecurityRuleSourceTypeEnum = "SERVICE_CIDR_BLOCK"
@@ -76,7 +85,7 @@ var mappingIngressSecurityRuleSourceType = map[string]IngressSecurityRuleSourceT
 	"SERVICE_CIDR_BLOCK": IngressSecurityRuleSourceTypeServiceCidrBlock,
 }
 
-// GetIngressSecurityRuleSourceTypeEnumValues Enumerates the set of values for IngressSecurityRuleSourceType
+// GetIngressSecurityRuleSourceTypeEnumValues Enumerates the set of values for IngressSecurityRuleSourceTypeEnum
 func GetIngressSecurityRuleSourceTypeEnumValues() []IngressSecurityRuleSourceTypeEnum {
 	values := make([]IngressSecurityRuleSourceTypeEnum, 0)
 	for _, v := range mappingIngressSecurityRuleSourceType {

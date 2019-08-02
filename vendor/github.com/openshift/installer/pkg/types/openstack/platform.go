@@ -9,21 +9,30 @@ type Platform struct {
 	// DefaultMachinePlatform is the default configuration used when
 	// installing on OpenStack for machine pools which do not define their own
 	// platform configuration.
-	DefaultMachinePlatform *MachinePool `json:"defaultMachinePlatform,omitempty"`
-
-	// NetworkCIDRBlock
 	// +optional
-	NetworkCIDRBlock string `json:"NetworkCIDRBlock"`
-
-	// BaseImage
-	// Name of image to use from OpenStack cloud
-	BaseImage string `json:"baseImage"`
+	DefaultMachinePlatform *MachinePool `json:"defaultMachinePlatform,omitempty"`
 
 	// Cloud
 	// Name of OpenStack cloud to use from clouds.yaml
 	Cloud string `json:"cloud"`
 
 	// ExternalNetwork
-	// The OpenStack external network to be used for installation.
+	// The OpenStack external network name to be used for installation.
 	ExternalNetwork string `json:"externalNetwork"`
+
+	// FlavorName
+	// The OpenStack compute flavor to use for servers.
+	FlavorName string `json:"computeFlavor"`
+
+	// LbFloatingIP
+	// Existing Floating IP to associate with the OpenStack load balancer.
+	LbFloatingIP string `json:"lbFloatingIP"`
+
+	// TrunkSupport
+	// Whether OpenStack ports can be trunked
+	TrunkSupport string `json:"trunkSupport"`
+
+	// OctaviaSupport
+	// Whether OpenStack has Octavia support
+	OctaviaSupport string `json:"octaviaSupport"`
 }

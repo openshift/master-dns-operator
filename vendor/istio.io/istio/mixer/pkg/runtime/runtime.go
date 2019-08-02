@@ -21,7 +21,6 @@ import (
 
 	"istio.io/istio/mixer/pkg/adapter"
 	"istio.io/istio/mixer/pkg/config/store"
-	"istio.io/istio/mixer/pkg/lang/compiled"
 	"istio.io/istio/mixer/pkg/pool"
 	"istio.io/istio/mixer/pkg/runtime/config"
 	"istio.io/istio/mixer/pkg/runtime/dispatcher"
@@ -107,9 +106,7 @@ func (c *Runtime) StartListening() error {
 		return errors.New("already listening")
 	}
 
-	kinds := config.KindMap(c.snapshot.Adapters, c.snapshot.Templates)
-
-	data, watchChan, err := store.StartWatch(c.store, kinds)
+	data, watchChan, err := store.StartWatch(c.store)
 	if err != nil {
 		return err
 	}
@@ -151,15 +148,18 @@ func (c *Runtime) onConfigChange(events []*store.Event) {
 }
 
 func (c *Runtime) processNewConfig() {
-	newSnapshot, _ := c.ephemeral.BuildSnapshot()
+	newSnapshot, err := c.ephemeral.BuildSnapshot()
+	log.Infof("Built new config.Snapshot: id='%d'", newSnapshot.ID)
+	if err != nil {
+		log.Error(err.Error())
+	}
 
 	oldHandlers := c.handlers
 
 	newHandlers := handler.NewTable(oldHandlers, newSnapshot, c.handlerPool)
 
-	builder := compiled.NewBuilder(newSnapshot.Attributes)
 	newRoutes := routing.BuildTable(
-		newHandlers, newSnapshot, builder, c.defaultConfigNamespace, log.DebugEnabled())
+		newHandlers, newSnapshot, c.defaultConfigNamespace, log.DebugEnabled())
 
 	oldContext := c.dispatcher.ChangeRoute(newRoutes)
 

@@ -1,12 +1,15 @@
 // Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
 //
-// Helper methods for OCI GOSDK Samples
+// Helper methods for Oracle Cloud Infrastructure Go SDK Samples
 //
 
 package helpers
 
 import (
+	"crypto/sha256"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"math"
 	"math/rand"
@@ -150,4 +153,17 @@ func GetRandomString(n int) string {
 		b[i] = letters[rand.Intn(len(letters))]
 	}
 	return string(b)
+}
+
+// WriteTempFileOfSize output random content to a file
+func WriteTempFileOfSize(filesize int64) (fileName string, fileSize int64) {
+	hash := sha256.New()
+	f, _ := ioutil.TempFile("", "OCIGOSDKSampleFile")
+	ra := rand.New(rand.NewSource(time.Now().UnixNano()))
+	defer f.Close()
+	writer := io.MultiWriter(f, hash)
+	written, _ := io.CopyN(writer, ra, filesize)
+	fileName = f.Name()
+	fileSize = written
+	return
 }

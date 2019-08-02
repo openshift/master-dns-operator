@@ -1,56 +1,90 @@
+// Package aws contains AWS-specific Terraform-variable logic.
 package aws
 
-// Endpoints is the type of the AWS endpoints.
-type Endpoints string
+import (
+	"encoding/json"
+	"fmt"
 
-const (
-	// EndpointsAll represents the configuration for using both private and public endpoints.
-	EndpointsAll Endpoints = "all"
-	// EndpointsPrivate represents the configuration for using only private endpoints.
-	EndpointsPrivate Endpoints = "private"
-	// EndpointsPublic represents the configuration for using only public endpoints.
-	EndpointsPublic Endpoints = "public"
+	"github.com/openshift/installer/pkg/types/aws/defaults"
+	"github.com/pkg/errors"
+	"sigs.k8s.io/cluster-api-provider-aws/pkg/apis/awsproviderconfig/v1beta1"
 )
 
-// AWS converts AWS related config.
-type AWS struct {
-	EC2AMIOverride string    `json:"tectonic_aws_ec2_ami_override,omitempty"`
-	Endpoints      Endpoints `json:"tectonic_aws_endpoints,omitempty"`
-	External       `json:",inline"`
-	ExtraTags      map[string]string `json:"tectonic_aws_extra_tags,omitempty"`
-	InstallerRole  string            `json:"tectonic_aws_installer_role,omitempty"`
-	Master         `json:",inline"`
-	Region         string `json:"tectonic_aws_region,omitempty"`
-	VPCCIDRBlock   string `json:"tectonic_aws_vpc_cidr_block,omitempty"`
-	Worker         `json:",inline"`
+type config struct {
+	AMI                     string            `json:"aws_ami"`
+	ExtraTags               map[string]string `json:"aws_extra_tags,omitempty"`
+	BootstrapInstanceType   string            `json:"aws_bootstrap_instance_type,omitempty"`
+	MasterInstanceType      string            `json:"aws_master_instance_type,omitempty"`
+	MasterAvailabilityZones []string          `json:"aws_master_availability_zones"`
+	WorkerAvailabilityZones []string          `json:"aws_worker_availability_zones"`
+	IOPS                    int64             `json:"aws_master_root_volume_iops"`
+	Size                    int64             `json:"aws_master_root_volume_size,omitempty"`
+	Type                    string            `json:"aws_master_root_volume_type,omitempty"`
+	Region                  string            `json:"aws_region,omitempty"`
 }
 
-// External converts external related config.
-type External struct {
-	MasterSubnetIDs []string `json:"tectonic_aws_external_master_subnet_ids,omitempty"`
-	PrivateZone     string   `json:"tectonic_aws_external_private_zone,omitempty"`
-	VPCID           string   `json:"tectonic_aws_external_vpc_id,omitempty"`
-	WorkerSubnetIDs []string `json:"tectonic_aws_external_worker_subnet_ids,omitempty"`
-}
+// TFVars generates AWS-specific Terraform variables launching the cluster.
+func TFVars(masterConfigs []*v1beta1.AWSMachineProviderConfig, workerConfigs []*v1beta1.AWSMachineProviderConfig) ([]byte, error) {
+	masterConfig := masterConfigs[0]
 
-// Master converts master related config.
-type Master struct {
-	CustomSubnets    map[string]string `json:"tectonic_aws_master_custom_subnets,omitempty"`
-	EC2Type          string            `json:"tectonic_aws_master_ec2_type,omitempty"`
-	ExtraSGIDs       []string          `json:"tectonic_aws_master_extra_sg_ids,omitempty"`
-	IAMRoleName      string            `json:"tectonic_aws_master_iam_role_name,omitempty"`
-	MasterRootVolume `json:",inline"`
-}
+	tags := make(map[string]string, len(masterConfig.Tags))
+	for _, tag := range masterConfig.Tags {
+		tags[tag.Name] = tag.Value
+	}
 
-// MasterRootVolume converts master rool volume related config.
-type MasterRootVolume struct {
-	IOPS int    `json:"tectonic_aws_master_root_volume_iops,omitempty"`
-	Size int    `json:"tectonic_aws_master_root_volume_size,omitempty"`
-	Type string `json:"tectonic_aws_master_root_volume_type,omitempty"`
-}
+	masterAvailabilityZones := make([]string, len(masterConfigs))
+	for i, c := range masterConfigs {
+		masterAvailabilityZones[i] = c.Placement.AvailabilityZone
+	}
 
-// Worker converts worker related config.
-type Worker struct {
-	CustomSubnets map[string]string `json:"tectonic_aws_worker_custom_subnets,omitempty"`
-	IAMRoleName   string            `json:"tectonic_aws_worker_iam_role_name,omitempty"`
+	exists := struct{}{}
+	availabilityZoneMap := map[string]struct{}{}
+	for _, c := range workerConfigs {
+		availabilityZoneMap[c.Placement.AvailabilityZone] = exists
+	}
+	workerAvailabilityZones := make([]string, 0, len(availabilityZoneMap))
+	for zone := range availabilityZoneMap {
+		workerAvailabilityZones = append(workerAvailabilityZones, zone)
+	}
+
+	if len(masterConfig.BlockDevices) == 0 {
+		return nil, errors.New("block device slice cannot be empty")
+	}
+
+	rootVolume := masterConfig.BlockDevices[0]
+	if rootVolume.EBS == nil {
+		return nil, errors.New("EBS information must be configured for the root volume")
+	}
+
+	if rootVolume.EBS.VolumeType == nil {
+		return nil, errors.New("EBS volume type must be configured for the root volume")
+	}
+
+	if rootVolume.EBS.VolumeSize == nil {
+		return nil, errors.New("EBS volume size must be configured for the root volume")
+	}
+
+	if *rootVolume.EBS.VolumeType == "io1" && rootVolume.EBS.Iops == nil {
+		return nil, errors.New("EBS IOPS must be configured for the io1 root volume")
+	}
+
+	instanceClass := defaults.InstanceClass(masterConfig.Placement.Region)
+
+	cfg := &config{
+		Region:    masterConfig.Placement.Region,
+		ExtraTags: tags,
+		AMI:       *masterConfig.AMI.ID,
+		MasterAvailabilityZones: masterAvailabilityZones,
+		WorkerAvailabilityZones: workerAvailabilityZones,
+		BootstrapInstanceType:   fmt.Sprintf("%s.large", instanceClass),
+		MasterInstanceType:      masterConfig.InstanceType,
+		Size:                    *rootVolume.EBS.VolumeSize,
+		Type:                    *rootVolume.EBS.VolumeType,
+	}
+
+	if rootVolume.EBS.Iops != nil {
+		cfg.IOPS = *rootVolume.EBS.Iops
+	}
+
+	return json.MarshalIndent(cfg, "", "  ")
 }

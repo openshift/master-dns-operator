@@ -15,29 +15,26 @@
 // Package authz converts Istio RBAC (role-based-access-control) policies (ServiceRole and ServiceRoleBinding)
 // to corresponding filter config that is used by the envoy RBAC filter to enforce access control to
 // the service co-located with envoy.
-// Currently the config is only generated for sidecar node on inbound HTTP listener. The generation
+// Currently the config is only generated for sidecar node on inbound HTTP/TCP listener. The generation
 // is controlled by RbacConfig (a singleton custom resource with cluster scope). User could disable
-// this plugin by either deleting the RbacConfig or set the RbacConfig.mode to OFF.
-// Note: no RbacConfig is created in the deployment of Istio which means this plugin doesn't generate
-// any RBAC config by default.
+// this plugin by either deleting the ClusterRbacConfig or set the ClusterRbacConfig.mode to OFF.
+// Note: ClusterRbacConfig is not created with default istio installation which means this plugin doesn't
+// generate any RBAC config by default.
 package authz
 
 import (
-	"fmt"
-	"sort"
-	"strings"
-
 	xdsapi "github.com/envoyproxy/go-control-plane/envoy/api/v2"
-	rbacconfig "github.com/envoyproxy/go-control-plane/envoy/config/filter/http/rbac/v2"
+	"github.com/envoyproxy/go-control-plane/envoy/api/v2/listener"
+	http_config "github.com/envoyproxy/go-control-plane/envoy/config/filter/http/rbac/v2"
 	http_conn "github.com/envoyproxy/go-control-plane/envoy/config/filter/network/http_connection_manager/v2"
+	network_config "github.com/envoyproxy/go-control-plane/envoy/config/filter/network/rbac/v2"
 	policyproto "github.com/envoyproxy/go-control-plane/envoy/config/rbac/v2alpha"
-	metadata "github.com/envoyproxy/go-control-plane/envoy/type/matcher"
 
 	rbacproto "istio.io/api/rbac/v1alpha1"
 	"istio.io/istio/pilot/pkg/model"
 	"istio.io/istio/pilot/pkg/networking/plugin"
-	"istio.io/istio/pilot/pkg/networking/plugin/authn"
 	"istio.io/istio/pilot/pkg/networking/util"
+
 	istiolog "istio.io/istio/pkg/log"
 )
 
@@ -46,21 +43,32 @@ var (
 )
 
 const (
-	// rbacFilterName is the name of the RBAC filter in envoy.
-	rbacFilterName = "envoy.filters.http.rbac"
+	// rbacHTTPFilterName is the name of the RBAC http filter in envoy.
+	rbacHTTPFilterName = "envoy.filters.http.rbac"
+
+	// rbacTCPFilterName is the name of the RBAC network filter in envoy.
+	rbacTCPFilterName       = "envoy.filters.network.rbac"
+	rbacTCPFilterStatPrefix = "tcp."
 
 	// attributes that could be used in both ServiceRoleBinding and ServiceRole.
 	attrRequestHeader = "request.headers" // header name is surrounded by brackets, e.g. "request.headers[User-Agent]".
 
 	// attributes that could be used in a ServiceRoleBinding property.
-	attrSrcIP            = "source.ip"              // supports both single ip and cidr, e.g. "10.1.2.3" or "10.1.0.0/16".
-	attrSrcNamespace     = "source.namespace"       // e.g. "default".
-	attrSrcUser          = "source.user"            // source identity, e.g. "cluster.local/ns/default/sa/productpage".
-	attrSrcPrincipal     = "source.principal"       // source identity, e,g, "cluster.local/ns/default/sa/productpage".
-	attrRequestPrincipal = "request.auth.principal" // authenticated principal of the request.
-	attrRequestAudiences = "request.auth.audiences" // intended audience(s) for this authentication information.
-	attrRequestPresenter = "request.auth.presenter" // authorized presenter of the credential.
-	attrRequestClaims    = "request.auth.claims"    // claim name is surrounded by brackets, e.g. "request.auth.claims[iss]".
+	attrSrcIP        = "source.ip"        // supports both single ip and cidr, e.g. "10.1.2.3" or "10.1.0.0/16".
+	attrSrcNamespace = "source.namespace" // e.g. "default".
+	// TODO(pitlv2109): Since attrSrcUser will be deprecated, maybe remove this and use attrSrcPrincipal consistently everywhere?
+	attrSrcUser            = "source.user"                 // source identity, e.g. "cluster.local/ns/default/sa/productpage".
+	attrSrcPrincipal       = "source.principal"            // source identity, e,g, "cluster.local/ns/default/sa/productpage".
+	attrRequestPrincipal   = "request.auth.principal"      // authenticated principal of the request.
+	attrRequestAudiences   = "request.auth.audiences"      // intended audience(s) for this authentication information.
+	attrRequestPresenter   = "request.auth.presenter"      // authorized presenter of the credential.
+	attrRequestClaims      = "request.auth.claims"         // claim name is surrounded by brackets, e.g. "request.auth.claims[iss]".
+	attrRequestClaimGroups = "request.auth.claims[groups]" // groups claim.
+
+	// reserved string values in names and not_names in ServiceRoleBinding.
+	// This prevents ambiguity when the user defines "*" for names or not_names.
+	allUsers              = "allUsers"              // Allow all users, both authenticated and unauthenticated.
+	allAuthenticatedUsers = "allAuthenticatedUsers" // Allow all authenticated users.
 
 	// attributes that could be used in a ServiceRole constraint.
 	attrDestIP        = "destination.ip"        // supports both single ip and cidr, e.g. "10.1.2.3" or "10.1.0.0/16".
@@ -69,9 +77,12 @@ const (
 	attrDestName      = "destination.name"      // short service name, e.g. "productpage".
 	attrDestNamespace = "destination.namespace" // e.g. "default".
 	attrDestUser      = "destination.user"      // service account, e.g. "bookinfo-productpage".
+	attrConnSNI       = "connection.sni"        // server name indication, e.g. "www.example.com".
 
+	// Envoy config attributes for ServiceRole rules.
 	methodHeader = ":method"
 	pathHeader   = ":path"
+	hostHeader   = ":authority"
 )
 
 // serviceMetadata is a collection of different kind of information about a service.
@@ -81,9 +92,20 @@ type serviceMetadata struct {
 	attributes map[string]string // additional attributes of the service
 }
 
-func createServiceMetadata(attr *model.ServiceAttributes, in *model.ServiceInstance) *serviceMetadata {
+type rbacOption struct {
+	authzPolicies        *model.AuthorizationPolicies
+	forTCPFilter         bool // The generated config is to be used by the Envoy network filter when true.
+	globalPermissiveMode bool // True if global RBAC config is in permissive mode.
+}
+
+func newServiceMetadata(attr *model.ServiceAttributes, in *model.ServiceInstance) *serviceMetadata {
+	if attr.Namespace == "" {
+		rbacLog.Errorf("no namespace for service %v", in.Service.Hostname)
+		return nil
+	}
+
 	return &serviceMetadata{
-		name:   in.Service.Hostname.String(),
+		name:   string(in.Service.Hostname),
 		labels: in.Labels,
 		attributes: map[string]string{
 			attrDestName:      attr.Name,
@@ -91,141 +113,6 @@ func createServiceMetadata(attr *model.ServiceAttributes, in *model.ServiceInsta
 			attrDestUser:      extractActualServiceAccount(in.ServiceAccount),
 		},
 	}
-}
-
-// attributesEnforcedInPlugin returns true if the given attribute should be enforced in the plugin.
-// This is because we already have enough information to do this in the plugin.
-func attributesEnforcedInPlugin(attr string) bool {
-	switch attr {
-	case attrDestName, attrDestNamespace, attrDestUser:
-		return true
-	}
-	return strings.HasPrefix(attr, attrDestLabel)
-}
-
-// match checks if the service is matched to the given rbac access rule.
-// It returns true if the service is matched to the service name and constraints specified in the
-// access rule.
-func (service serviceMetadata) match(rule *rbacproto.AccessRule) bool {
-	if rule == nil {
-		return true
-	}
-
-	// Check if the service name is matched.
-	if !stringMatch(service.name, rule.Services) {
-		return false
-	}
-
-	// Check if the constraints are matched.
-	for _, constraint := range rule.Constraints {
-		if !attributesEnforcedInPlugin(constraint.Key) {
-			continue
-		}
-
-		var actualValue string
-		var present bool
-		if strings.HasPrefix(constraint.Key, attrDestLabel) {
-			consLabel, err := extractNameInBrackets(strings.TrimPrefix(constraint.Key, attrDestLabel))
-			if err != nil {
-				rbacLog.Errorf("ignored invalid %s: %v", attrDestLabel, err)
-				continue
-			}
-			actualValue, present = service.labels[consLabel]
-		} else {
-			actualValue, present = service.attributes[constraint.Key]
-		}
-		// The constraint is not matched if any of the follow condition is true:
-		// a) the constraint is specified but not found in the serviceMetadata;
-		// b) the constraint value is not matched to the actual value;
-		if !present || !stringMatch(actualValue, constraint.Values) {
-			return false
-		}
-	}
-
-	return true
-}
-
-// attributesEnforcedInDynamicMetadataMatcher returns true if the given attribute should be enforced
-// via dynamic metadata matcher. This means these attributes are depending on the output of authn filter.
-func attributesEnforcedInDynamicMetadataMatcher(k string) bool {
-	switch k {
-	case attrSrcNamespace, attrSrcUser, attrSrcPrincipal, attrRequestPrincipal, attrRequestAudiences,
-		attrRequestPresenter:
-		return true
-	}
-	return strings.HasPrefix(k, attrRequestClaims)
-}
-
-func generateMetadataStringMatcher(keys []string, v *metadata.StringMatcher) *metadata.MetadataMatcher {
-	paths := make([]*metadata.MetadataMatcher_PathSegment, 0)
-	for _, k := range keys {
-		paths = append(paths, &metadata.MetadataMatcher_PathSegment{
-			Segment: &metadata.MetadataMatcher_PathSegment_Key{Key: k},
-		})
-	}
-	return &metadata.MetadataMatcher{
-		Filter: authn.AuthnFilterName,
-		Path:   paths,
-		Value: &metadata.MetadataMatcher_Value{
-			MatchPattern: &metadata.MetadataMatcher_Value_StringMatch{
-				StringMatch: v,
-			},
-		},
-	}
-}
-
-// createDynamicMetadataMatcher creates a MetadataMatcher for the given key, value pair.
-func createDynamicMetadataMatcher(k, v string) *metadata.MetadataMatcher {
-	var keys []string
-	forceRegexPattern := false
-
-	if k == attrSrcNamespace {
-		// Proxy doesn't have attrSrcNamespace directly, but the information is encoded in attrSrcPrincipal
-		// with format: cluster.local/ns/{NAMESPACE}/sa/{SERVICE-ACCOUNT}, so we change the key to
-		// attrSrcPrincipal and change the value to a regular expression to match the namespace part.
-		keys = []string{attrSrcPrincipal}
-		v = fmt.Sprintf(`*/ns/%s/*`, v)
-		forceRegexPattern = true
-	} else if strings.HasPrefix(k, attrRequestClaims) {
-		claim, err := extractNameInBrackets(strings.TrimPrefix(k, attrRequestClaims))
-		if err != nil {
-			return nil
-		}
-		keys = []string{attrRequestClaims, claim}
-	} else {
-		keys = []string{k}
-	}
-
-	var stringMatcher *metadata.StringMatcher
-	// Check if v is "*" first to make sure we won't generate an empty prefix/suffix StringMatcher,
-	// the Envoy StringMatcher doesn't allow empty prefix/suffix.
-	if v == "*" || forceRegexPattern {
-		stringMatcher = &metadata.StringMatcher{
-			MatchPattern: &metadata.StringMatcher_Regex{
-				Regex: strings.Replace(v, "*", ".*", -1),
-			},
-		}
-	} else if strings.HasPrefix(v, "*") {
-		stringMatcher = &metadata.StringMatcher{
-			MatchPattern: &metadata.StringMatcher_Suffix{
-				Suffix: v[1:],
-			},
-		}
-	} else if strings.HasSuffix(v, "*") {
-		stringMatcher = &metadata.StringMatcher{
-			MatchPattern: &metadata.StringMatcher_Prefix{
-				Prefix: v[:len(v)-1],
-			},
-		}
-	} else {
-		stringMatcher = &metadata.StringMatcher{
-			MatchPattern: &metadata.StringMatcher_Exact{
-				Exact: v,
-			},
-		}
-	}
-
-	return generateMetadataStringMatcher(keys, stringMatcher)
 }
 
 // Plugin implements Istio RBAC authz
@@ -239,6 +126,15 @@ func NewPlugin() plugin.Plugin {
 // OnOutboundListener is called whenever a new outbound listener is added to the LDS output for a given service
 // Can be used to add additional filters on the outbound path
 func (Plugin) OnOutboundListener(in *plugin.InputParams, mutable *plugin.MutableObjects) error {
+	if in.Node.Type != model.Router {
+		return nil
+	}
+
+	return buildFilter(in, mutable)
+}
+
+// OnInboundFilterChains is called whenever a plugin needs to setup the filter chains, including relevant filter chain configuration.
+func (Plugin) OnInboundFilterChains(in *plugin.InputParams) []plugin.FilterChain {
 	return nil
 }
 
@@ -246,28 +142,66 @@ func (Plugin) OnOutboundListener(in *plugin.InputParams, mutable *plugin.Mutable
 // Can be used to add additional filters (e.g., mixer filter) or add more stuff to the HTTP connection manager
 // on the inbound path
 func (Plugin) OnInboundListener(in *plugin.InputParams, mutable *plugin.MutableObjects) error {
-	// Only supports sidecar proxy of HTTP listener for now.
-	if in.Node.Type != model.Sidecar || in.ListenerProtocol != plugin.ListenerProtocolHTTP {
+	// Only supports sidecar proxy for now.
+	if in.Node.Type != model.SidecarProxy {
 		return nil
 	}
+
+	return buildFilter(in, mutable)
+}
+
+func buildFilter(in *plugin.InputParams, mutable *plugin.MutableObjects) error {
+	if in.ServiceInstance == nil || in.ServiceInstance.Service == nil {
+		rbacLog.Errorf("nil service instance")
+		return nil
+	}
+
 	svc := in.ServiceInstance.Service.Hostname
 	attr := in.ServiceInstance.Service.Attributes
-	//if len(attr) == nil || err != nil {
-	//	rbacLog.Errorf("rbac plugin disabled: invalid service %s: %v", svc, err)
-	//	return nil
-	//}
-
-	if !isRbacEnabled(svc.String(), attr.Namespace, in.Env.IstioConfigStore) {
+	authzPolicies := in.Push.AuthzPolicies
+	rbacEnabled, globalPermissive := isRbacEnabled(string(svc), attr.Namespace, authzPolicies)
+	if !rbacEnabled {
 		return nil
 	}
 
-	service := createServiceMetadata(&attr, in.ServiceInstance)
-	rbacLog.Debugf("building filter config for %v", *service)
-	filter := buildHTTPFilter(service, in.Env.IstioConfigStore)
-	if filter != nil {
-		rbacLog.Infof("built filter config for %s", service.name)
-		for cnum := range mutable.FilterChains {
-			mutable.FilterChains[cnum].HTTP = append(mutable.FilterChains[cnum].HTTP, filter)
+	service := newServiceMetadata(&attr, in.ServiceInstance)
+	if service == nil {
+		rbacLog.Errorf("failed to get service")
+		return nil
+	}
+	option := rbacOption{authzPolicies: authzPolicies, globalPermissiveMode: globalPermissive}
+
+	switch in.ListenerProtocol {
+	case plugin.ListenerProtocolTCP:
+		rbacLog.Debugf("building filter for TCP listener protocol")
+		tcpFilter := buildTCPFilter(service, option, util.IsXDSMarshalingToAnyEnabled(in.Node))
+		if in.Node.Type == model.Router {
+			// For gateways, due to TLS termination, a listener marked as TCP could very well
+			// be using a HTTP connection manager. So check the filterChain.listenerProtocol
+			// to decide the type of filter to attach
+			httpFilter := buildHTTPFilter(service, option, util.IsXDSMarshalingToAnyEnabled(in.Node))
+			rbacLog.Infof("built RBAC http filter for router %s", service)
+			for cnum := range mutable.FilterChains {
+				if mutable.FilterChains[cnum].ListenerProtocol == plugin.ListenerProtocolHTTP {
+					mutable.FilterChains[cnum].HTTP = append(mutable.FilterChains[cnum].HTTP, httpFilter)
+				} else {
+					mutable.FilterChains[cnum].TCP = append(mutable.FilterChains[cnum].TCP, *tcpFilter)
+				}
+			}
+		} else {
+			rbacLog.Infof("built RBAC tcp filter for sidecar %s", service)
+			for cnum := range mutable.FilterChains {
+				mutable.FilterChains[cnum].TCP = append(mutable.FilterChains[cnum].TCP, *tcpFilter)
+			}
+		}
+	case plugin.ListenerProtocolHTTP:
+		rbacLog.Debugf("building filter for HTTP listener protocol")
+		filter := buildHTTPFilter(service, option, util.IsXDSMarshalingToAnyEnabled(in.Node))
+		if filter != nil {
+			rbacLog.Infof("built RBAC http filter for %s", service)
+			for cnum := range mutable.FilterChains {
+				mutable.FilterChains[cnum].HTTP = append(mutable.FilterChains[cnum].HTTP, filter)
+			}
 		}
 	}
 
@@ -275,8 +209,7 @@ func (Plugin) OnInboundListener(in *plugin.InputParams, mutable *plugin.MutableO
 }
 
 // OnInboundCluster implements the Plugin interface method.
-func (Plugin) OnInboundCluster(env *model.Environment, node *model.Proxy, push *model.PushContext, service *model.Service,
-	servicePort *model.Port, cluster *xdsapi.Cluster) {
+func (Plugin) OnInboundCluster(in *plugin.InputParams, cluster *xdsapi.Cluster) {
 }
 
 // OnOutboundRouteConfiguration implements the Plugin interface method.
@@ -288,8 +221,7 @@ func (Plugin) OnInboundRouteConfiguration(in *plugin.InputParams, route *xdsapi.
 }
 
 // OnOutboundCluster implements the Plugin interface method.
-func (Plugin) OnOutboundCluster(env *model.Environment, push *model.PushContext, service *model.Service,
-	servicePort *model.Port, cluster *xdsapi.Cluster) {
+func (Plugin) OnOutboundCluster(in *plugin.InputParams, cluster *xdsapi.Cluster) {
 }
 
 // isServiceInList checks if a given service or namespace is found in the RbacConfig target list.
@@ -311,338 +243,146 @@ func isServiceInList(svc string, namespace string, li *rbacproto.RbacConfig_Targ
 	return false
 }
 
-func isRbacEnabled(svc string, ns string, store model.IstioConfigStore) bool {
-	var configProto *rbacproto.RbacConfig
-	config := store.RbacConfig()
-	if config != nil {
-		configProto = config.Spec.(*rbacproto.RbacConfig)
-	}
-	if configProto == nil {
-		rbacLog.Debugf("disabled, no RbacConfig")
-		return false
+func isRbacEnabled(svc string, ns string, authzPolicies *model.AuthorizationPolicies) (bool /*rbac enabed*/, bool /*permissive mode enabled globally*/) {
+	if authzPolicies == nil {
+		return false, false
 	}
 
+	configProto := authzPolicies.RbacConfig
+	if configProto == nil {
+		rbacLog.Debugf("disabled, no RbacConfig")
+		return false, false
+	}
+
+	isPermissive := configProto.EnforcementMode == rbacproto.EnforcementMode_PERMISSIVE
 	switch configProto.Mode {
 	case rbacproto.RbacConfig_ON:
-		return true
+		return true, isPermissive
 	case rbacproto.RbacConfig_ON_WITH_INCLUSION:
-		return isServiceInList(svc, ns, configProto.Inclusion)
+		return isServiceInList(svc, ns, configProto.Inclusion), isPermissive
 	case rbacproto.RbacConfig_ON_WITH_EXCLUSION:
-		return !isServiceInList(svc, ns, configProto.Exclusion)
+		return !isServiceInList(svc, ns, configProto.Exclusion), isPermissive
 	default:
 		rbacLog.Debugf("rbac plugin disabled by RbacConfig: %v", *configProto)
-		return false
+		return false, isPermissive
 	}
+}
+
+func buildTCPFilter(service *serviceMetadata, option rbacOption, isXDSMarshalingToAnyEnabled bool) *listener.Filter {
+	option.forTCPFilter = true
+	// The result of convertRbacRulesToFilterConfig() is wrapped in a config for http filter, here we
+	// need to extract the generated rules and put in a config for network filter.
+	var config *http_config.RBAC
+	if option.authzPolicies.IsRbacV2 {
+		rbacLog.Debugf("used RBAC v2 for TCP filter")
+		config = convertRbacRulesToFilterConfigV2(service, option)
+	} else {
+		rbacLog.Debugf("used RBAC v1 for TCP filter")
+		config = convertRbacRulesToFilterConfig(service, option)
+	}
+	tcpConfig := listener.Filter{
+		Name: rbacTCPFilterName,
+	}
+	rbacConfig := &network_config.RBAC{
+		Rules:       config.Rules,
+		ShadowRules: config.ShadowRules,
+		StatPrefix:  rbacTCPFilterStatPrefix,
+	}
+
+	if isXDSMarshalingToAnyEnabled {
+		tcpConfig.ConfigType = &listener.Filter_TypedConfig{TypedConfig: util.MessageToAny(rbacConfig)}
+	} else {
+		tcpConfig.ConfigType = &listener.Filter_Config{Config: util.MessageToStruct(rbacConfig)}
+	}
+
+	rbacLog.Debugf("generated tcp filter config: %v", tcpConfig)
+	return &tcpConfig
 }
 
 // buildHTTPFilter builds the RBAC http filter that enforces the access control to the specified
 // service which is co-located with the sidecar proxy.
-func buildHTTPFilter(service *serviceMetadata, store model.IstioConfigStore) *http_conn.HttpFilter {
-	namespace, present := service.attributes[attrDestNamespace]
-	if !present {
-		rbacLog.Errorf("no namespace for service %v", service)
-		return nil
+func buildHTTPFilter(service *serviceMetadata, option rbacOption, isXDSMarshalingToAnyEnabled bool) *http_conn.HttpFilter {
+	option.forTCPFilter = false
+	var config *http_config.RBAC
+	if option.authzPolicies.IsRbacV2 {
+		rbacLog.Debugf("used RBAC v2 for HTTP filter")
+		config = convertRbacRulesToFilterConfigV2(service, option)
+	} else {
+		rbacLog.Debugf("used RBAC v1 for HTTP filter")
+		config = convertRbacRulesToFilterConfig(service, option)
+	}
+	rbacLog.Debugf("generated http filter config: %v", *config)
+	out := &http_conn.HttpFilter{
+		Name: rbacHTTPFilterName,
 	}
 
-	roles := store.ServiceRoles(namespace)
-	if roles == nil {
-		rbacLog.Infof("no service role in namespace %s", namespace)
-	}
-	bindings := store.ServiceRoleBindings(namespace)
-	if bindings == nil {
-		rbacLog.Infof("no service role binding in namespace %s", namespace)
+	if isXDSMarshalingToAnyEnabled {
+		out.ConfigType = &http_conn.HttpFilter_TypedConfig{TypedConfig: util.MessageToAny(config)}
+	} else {
+		out.ConfigType = &http_conn.HttpFilter_Config{Config: util.MessageToStruct(config)}
 	}
 
-	config := convertRbacRulesToFilterConfig(service, roles, bindings)
-	rbacLog.Debugf("generated filter config: %v", *config)
-	return &http_conn.HttpFilter{
-		Name:   rbacFilterName,
-		Config: util.MessageToStruct(config),
-	}
+	return out
 }
 
 // convertRbacRulesToFilterConfig converts the current RBAC rules (ServiceRole and ServiceRoleBindings)
 // in service mesh to the corresponding proxy config for the specified service. The generated proxy config
 // will be consumed by envoy RBAC filter to enforce access control on the specified service.
-func convertRbacRulesToFilterConfig(
-	service *serviceMetadata, roles []model.Config, bindings []model.Config) *rbacconfig.RBAC {
-	// roleToBinding maps ServiceRole name to a list of ServiceRoleBindings.
-	roleToBinding := map[string][]*rbacproto.ServiceRoleBinding{}
-	for _, binding := range bindings {
-		bindingProto := binding.Spec.(*rbacproto.ServiceRoleBinding)
-		roleName := bindingProto.RoleRef.Name
-		if roleName == "" {
-			rbacLog.Errorf("ignored invalid binding %s in %s with empty RoleRef.Name",
-				binding.Name, binding.Namespace)
-			continue
-		}
-		roleToBinding[roleName] = append(roleToBinding[roleName], bindingProto)
+func convertRbacRulesToFilterConfig(service *serviceMetadata, option rbacOption) *http_config.RBAC {
+	enforcedConfig := &policyproto.RBAC{
+		Action:   policyproto.RBAC_ALLOW,
+		Policies: map[string]*policyproto.Policy{},
 	}
-
-	rbac := &policyproto.RBAC{
+	permissiveConfig := &policyproto.RBAC{
 		Action:   policyproto.RBAC_ALLOW,
 		Policies: map[string]*policyproto.Policy{},
 	}
 
-	permissiveRbac := &policyproto.RBAC{
-		Action:   policyproto.RBAC_ALLOW,
-		Policies: map[string]*policyproto.Policy{},
+	namespace := service.attributes[attrDestNamespace]
+	roleToBindings := option.authzPolicies.RoleToBindingsForNamespace(namespace)
+	for _, roleConfig := range option.authzPolicies.RolesForNamespace(namespace) {
+		roleName := roleConfig.Name
+		rbacLog.Debugf("checking role %v", roleName)
+
+		var enforcedBindings []*rbacproto.ServiceRoleBinding
+		var permissiveBindings []*rbacproto.ServiceRoleBinding
+		for _, binding := range roleToBindings[roleName] {
+			if binding.Mode == rbacproto.EnforcementMode_PERMISSIVE || option.globalPermissiveMode {
+				// If RBAC Config is set to permissive mode globally, all policies will be in
+				// permissive mode regardless its own mode.
+				permissiveBindings = append(permissiveBindings, binding)
+			} else {
+				enforcedBindings = append(enforcedBindings, binding)
+			}
+		}
+		setPolicy(enforcedConfig, roleConfig, enforcedBindings, service, option)
+		setPolicy(permissiveConfig, roleConfig, permissiveBindings, service, option)
 	}
 
-	for _, role := range roles {
-		enforcedPrincipals, permissivePrincipals := convertToPrincipals(roleToBinding[role.Name])
-		if len(enforcedPrincipals) == 0 && len(permissivePrincipals) == 0 {
-			rbacLog.Debugf("role skipped for no principals found")
-			continue
-		}
-
-		rbacLog.Debugf("checking role %v", role.Name)
-		permissions := make([]*policyproto.Permission, 0)
-		for i, rule := range role.Spec.(*rbacproto.ServiceRole).Rules {
-			if service.match(rule) {
-				// Generate the policy if the service is matched to the services specified in ServiceRole.
-				rbacLog.Debugf("matched AccessRule[%d]", i)
-				permissions = append(permissions, convertToPermission(rule))
-			}
-		}
-		if len(permissions) == 0 {
-			rbacLog.Debugf("role skipped for no AccessRule matched")
-			continue
-		}
-
-		if len(enforcedPrincipals) != 0 {
-			rbac.Policies[role.Name] = &policyproto.Policy{
-				Permissions: permissions,
-				Principals:  enforcedPrincipals,
-			}
-		}
-
-		if len(permissivePrincipals) != 0 {
-			permissiveRbac.Policies[role.Name] = &policyproto.Policy{
-				Permissions: permissions,
-				Principals:  permissivePrincipals,
-			}
-		}
+	// If RBAC Config is set to permissive mode globally, RBAC is transparent to users;
+	// when mapping to rbac filter config, there is only shadow rules (no normal rules).
+	if option.globalPermissiveMode {
+		return &http_config.RBAC{ShadowRules: permissiveConfig}
 	}
 
-	return &rbacconfig.RBAC{
-		Rules:       rbac,
-		ShadowRules: permissiveRbac}
+	ret := &http_config.RBAC{Rules: enforcedConfig}
+	// If RBAC permissive mode is only set on policy level, set ShadowRules only when there is policy in permissive mode.
+	// Otherwise, non-empty shadow_rules causes permissive attributes are sent to mixer when permissive mode isn't set.
+	if len(permissiveConfig.Policies) > 0 {
+		ret.ShadowRules = permissiveConfig
+	}
+	return ret
 }
 
-// convertToPermission converts a single AccessRule to a Permission.
-func convertToPermission(rule *rbacproto.AccessRule) *policyproto.Permission {
-	rules := &policyproto.Permission_AndRules{
-		AndRules: &policyproto.Permission_Set{
-			Rules: make([]*policyproto.Permission, 0),
-		},
-	}
-
-	if len(rule.Methods) > 0 {
-		methodRule := permissionForKeyValues(methodHeader, rule.Methods)
-		if methodRule != nil {
-			rules.AndRules.Rules = append(rules.AndRules.Rules, methodRule)
+func setPolicy(config *policyproto.RBAC, roleConfig model.Config, bindings []*rbacproto.ServiceRoleBinding,
+	service *serviceMetadata, option rbacOption) {
+	if len(bindings) != 0 {
+		role := roleConfig.Spec.(*rbacproto.ServiceRole)
+		m := NewModel(role, bindings)
+		policy := m.Generate(service, option.forTCPFilter)
+		if policy != nil {
+			rbacLog.Debugf("generated policy for role: %s", roleConfig.Name)
+			config.Policies[roleConfig.Name] = policy
 		}
-	}
-
-	if len(rule.Paths) > 0 {
-		pathRule := permissionForKeyValues(pathHeader, rule.Paths)
-		if pathRule != nil {
-			rules.AndRules.Rules = append(rules.AndRules.Rules, pathRule)
-		}
-	}
-
-	if len(rule.Constraints) > 0 {
-		// Constraint rule is matched with AND semantics, it's invalid if 2 constraints have the same
-		// key and this should already be caught in validation stage.
-		for _, constraint := range rule.Constraints {
-			p := permissionForKeyValues(constraint.Key, constraint.Values)
-			if p != nil {
-				rules.AndRules.Rules = append(rules.AndRules.Rules, p)
-			}
-		}
-	}
-
-	return &policyproto.Permission{Rule: rules}
-}
-
-// convertToPrincipals converts subjects to two lists of principals, one from enforced mode ServiceBindings,
-// and the other from permissive mode ServiceBindings.
-func convertToPrincipals(bindings []*rbacproto.ServiceRoleBinding) ([]*policyproto.Principal, []*policyproto.Principal) {
-	enforcedPrincipals := make([]*policyproto.Principal, 0)
-	permissivePrincipals := make([]*policyproto.Principal, 0)
-
-	for _, binding := range bindings {
-		if binding.Mode == rbacproto.EnforcementMode_ENFORCED {
-			for _, subject := range binding.Subjects {
-				enforcedPrincipals = append(enforcedPrincipals, convertToPrincipal(subject))
-			}
-		} else {
-			for _, subject := range binding.Subjects {
-				permissivePrincipals = append(permissivePrincipals, convertToPrincipal(subject))
-			}
-		}
-	}
-
-	return enforcedPrincipals, permissivePrincipals
-}
-
-// convertToPrincipal converts a single subject to principal.
-func convertToPrincipal(subject *rbacproto.Subject) *policyproto.Principal {
-	ids := &policyproto.Principal_AndIds{
-		AndIds: &policyproto.Principal_Set{
-			Ids: make([]*policyproto.Principal, 0),
-		},
-	}
-
-	if subject.User != "" {
-		if subject.User == "*" {
-			// Generate an any rule to grant access permission to anyone if the value is "*".
-			ids.AndIds.Ids = append(ids.AndIds.Ids, &policyproto.Principal{
-				Identifier: &policyproto.Principal_Any{
-					Any: true,
-				},
-			})
-		} else {
-			// Generate the user field with attrSrcPrincipal in the metadata.
-			id := principalForKeyValue(attrSrcPrincipal, subject.User)
-			if id != nil {
-				ids.AndIds.Ids = append(ids.AndIds.Ids, id)
-			}
-		}
-	}
-
-	if subject.Group != "" {
-		rbacLog.Errorf("ignored Subject.group %s, not implemented", subject.Group)
-	}
-
-	if len(subject.Properties) != 0 {
-		// Use a separate key list to make sure the map iteration order is stable, so that the generated
-		// config is stable.
-		var keys []string
-		for k := range subject.Properties {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-
-		for _, k := range keys {
-			v := subject.Properties[k]
-			if k == attrSrcPrincipal && subject.User != "" {
-				rbacLog.Errorf("ignored %s, duplicate with previous user value %s",
-					attrSrcPrincipal, subject.User)
-				continue
-			}
-			id := principalForKeyValue(k, v)
-			if id != nil {
-				ids.AndIds.Ids = append(ids.AndIds.Ids, id)
-			}
-		}
-	}
-
-	return &policyproto.Principal{Identifier: ids}
-}
-
-func permissionForKeyValues(key string, values []string) *policyproto.Permission {
-	var converter func(string) (*policyproto.Permission, error)
-	switch {
-	case key == attrDestIP:
-		converter = func(v string) (*policyproto.Permission, error) {
-			cidr, err := convertToCidr(v)
-			if err != nil {
-				return nil, err
-			}
-			return &policyproto.Permission{
-				Rule: &policyproto.Permission_DestinationIp{DestinationIp: cidr},
-			}, nil
-		}
-	case key == attrDestPort:
-		converter = func(v string) (*policyproto.Permission, error) {
-			port, err := convertToPort(v)
-			if err != nil {
-				return nil, err
-			}
-			return &policyproto.Permission{
-				Rule: &policyproto.Permission_DestinationPort{DestinationPort: port},
-			}, nil
-		}
-	case key == pathHeader || key == methodHeader:
-		converter = func(v string) (*policyproto.Permission, error) {
-			return &policyproto.Permission{
-				Rule: &policyproto.Permission_Header{
-					Header: convertToHeaderMatcher(key, v),
-				},
-			}, nil
-		}
-	case strings.HasPrefix(key, attrRequestHeader):
-		header, err := extractNameInBrackets(strings.TrimPrefix(key, attrRequestHeader))
-		if err != nil {
-			rbacLog.Errorf("ignored invalid %s: %v", attrRequestHeader, err)
-			return nil
-		}
-		converter = func(v string) (*policyproto.Permission, error) {
-			return &policyproto.Permission{
-				Rule: &policyproto.Permission_Header{
-					Header: convertToHeaderMatcher(header, v),
-				},
-			}, nil
-		}
-	default:
-		if !attributesEnforcedInPlugin(key) {
-			// The attribute is neither matched here nor in previous stage, this means it's something we
-			// don't understand, most likely a user typo.
-			rbacLog.Errorf("ignored unsupported constraint key: %s", key)
-		}
-		return nil
-	}
-
-	orRules := &policyproto.Permission_OrRules{
-		OrRules: &policyproto.Permission_Set{
-			Rules: make([]*policyproto.Permission, 0),
-		},
-	}
-	for _, v := range values {
-		if p, err := converter(v); err != nil {
-			rbacLog.Errorf("ignored invalid constraint value: %v", err)
-		} else {
-			orRules.OrRules.Rules = append(orRules.OrRules.Rules, p)
-		}
-	}
-
-	return &policyproto.Permission{Rule: orRules}
-}
-
-func principalForKeyValue(key, value string) *policyproto.Principal {
-	switch {
-	case key == attrSrcIP:
-		cidr, err := convertToCidr(value)
-		if err != nil {
-			rbacLog.Errorf("ignored invalid source ip value: %v", err)
-			return nil
-		}
-		return &policyproto.Principal{Identifier: &policyproto.Principal_SourceIp{SourceIp: cidr}}
-	case strings.HasPrefix(key, attrRequestHeader):
-		header, err := extractNameInBrackets(strings.TrimPrefix(key, attrRequestHeader))
-		if err != nil {
-			rbacLog.Errorf("ignored invalid %s: %v", attrRequestHeader, err)
-			return nil
-		}
-		return &policyproto.Principal{
-			Identifier: &policyproto.Principal_Header{
-				Header: convertToHeaderMatcher(header, value),
-			},
-		}
-	case attributesEnforcedInDynamicMetadataMatcher(key):
-		if matcher := createDynamicMetadataMatcher(key, value); matcher != nil {
-			return &policyproto.Principal{
-				Identifier: &policyproto.Principal_Metadata{
-					Metadata: matcher,
-				},
-			}
-		}
-		rbacLog.Errorf("ignored invalid dynamic metadata: %s", key)
-		return nil
-	default:
-		rbacLog.Errorf("ignored unsupported property key: %s", key)
-		return nil
 	}
 }

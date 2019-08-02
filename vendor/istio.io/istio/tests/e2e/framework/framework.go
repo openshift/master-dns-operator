@@ -25,7 +25,6 @@ import (
 
 var (
 	skipCleanup = flag.Bool("skip_cleanup", false, "Debug, skip clean up")
-	skipLogSave = flag.Bool("skip_log_save", false, "Debug, skip log save")
 	// TestVM is true if in this test run user wants to test VM on istio
 	TestVM = flag.Bool("test_vm", false, "whether to test VM on istio")
 )
@@ -108,6 +107,7 @@ func NewCommonConfigWithVersion(testID, version string) (*CommonConfig, error) {
 	c.Cleanup.RegisterCleanable(c.Kube.Istioctl)
 	c.Cleanup.RegisterCleanable(c.Kube.AppManager)
 	if c.Kube.RemoteKubeConfig != "" {
+		c.Cleanup.RegisterCleanable(c.Kube.RemoteIstioctl)
 		c.Cleanup.RegisterCleanable(c.Kube.RemoteAppManager)
 	}
 
@@ -195,15 +195,20 @@ func (c *CommonConfig) saveLogs(r int) error {
 		log.Warn("Skipping log saving as Info is not initialized")
 		return nil
 	}
-	if *skipLogSave {
-		return nil
-	}
 	log.Info("Saving logs")
 	if err := c.Info.Update(r); err != nil {
 		log.Errorf("Could not create status file. Error %s", err)
 		return err
 	}
-	return c.Info.FetchAndSaveClusterLogs(c.Kube.Namespace, c.Kube.KubeConfig)
+	if err := c.Info.FetchAndSaveClusterLogs(c.Kube.Namespace, c.Kube.KubeConfig); err != nil {
+		return err
+	}
+	if c.Kube.RemoteKubeConfig != "" {
+		if err := c.Info.FetchAndSaveClusterLogs(c.Kube.Namespace, c.Kube.RemoteKubeConfig); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // RunTest sets up all registered cleanables in FIFO order

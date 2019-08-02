@@ -67,6 +67,7 @@ const (
 
 	ProtocolTCP   Protocol = "TCP"
 	ProtocolUDP   Protocol = "UDP"
+	ProtocolPROXY Protocol = "PROXY"
 	ProtocolHTTP  Protocol = "HTTP"
 	ProtocolHTTPS Protocol = "HTTPS"
 )
@@ -86,7 +87,7 @@ type CreateOpts struct {
 	LBMethod LBMethod `json:"lb_algorithm" required:"true"`
 
 	// The protocol used by the pool members, you can use either
-	// ProtocolTCP, ProtocolUDP, ProtocolHTTP, or ProtocolHTTPS.
+	// ProtocolTCP, ProtocolUDP, ProtocolPROXY, ProtocolHTTP, or ProtocolHTTPS.
 	Protocol Protocol `json:"protocol" required:"true"`
 
 	// The Loadbalancer on which the members of the pool will be associated with.
@@ -149,10 +150,10 @@ type UpdateOptsBuilder interface {
 // operation.
 type UpdateOpts struct {
 	// Name of the pool.
-	Name string `json:"name,omitempty"`
+	Name *string `json:"name,omitempty"`
 
 	// Human-readable description for the pool.
-	Description string `json:"description,omitempty"`
+	Description *string `json:"description,omitempty"`
 
 	// The algorithm used to distribute load between the members of the pool. The
 	// current specification supports LBMethodRoundRobin, LBMethodLeastConnections
@@ -308,7 +309,7 @@ type UpdateMemberOptsBuilder interface {
 // operation.
 type UpdateMemberOpts struct {
 	// Name of the Member.
-	Name string `json:"name,omitempty"`
+	Name *string `json:"name,omitempty"`
 
 	// A positive integer value that indicates the relative portion of traffic
 	// that this member should receive from the pool. For example, a member with

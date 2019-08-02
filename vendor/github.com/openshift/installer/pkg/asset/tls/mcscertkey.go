@@ -3,14 +3,16 @@ package tls
 import (
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"net"
 
 	"github.com/openshift/installer/pkg/asset"
 	"github.com/openshift/installer/pkg/asset/installconfig"
+	baremetaltypes "github.com/openshift/installer/pkg/types/baremetal"
 )
 
 // MCSCertKey is the asset that generates the MCS key/cert pair.
 type MCSCertKey struct {
-	CertKey
+	SignedCertKey
 }
 
 var _ asset.Asset = (*MCSCertKey)(nil)
@@ -27,20 +29,27 @@ func (a *MCSCertKey) Dependencies() []asset.Asset {
 
 // Generate generates the cert/key pair based on its dependencies.
 func (a *MCSCertKey) Generate(dependencies asset.Parents) error {
-	rootCA := &RootCA{}
+	ca := &RootCA{}
 	installConfig := &installconfig.InstallConfig{}
-	dependencies.Get(rootCA, installConfig)
+	dependencies.Get(ca, installConfig)
 
-	hostname := apiAddress(installConfig.Config)
+	hostname := internalAPIAddress(installConfig.Config)
 
 	cfg := &CertCfg{
 		Subject:      pkix.Name{CommonName: hostname},
 		ExtKeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		Validity:     ValidityTenYears,
-		DNSNames:     []string{hostname},
 	}
 
-	return a.CertKey.Generate(cfg, rootCA, "machine-config-server", DoNotAppendParent)
+	switch installConfig.Config.Platform.Name() {
+	case baremetaltypes.Name:
+		cfg.IPAddresses = []net.IP{net.ParseIP(installConfig.Config.BareMetal.APIVIP)}
+		cfg.DNSNames = []string{hostname, installConfig.Config.BareMetal.APIVIP}
+	default:
+		cfg.DNSNames = []string{hostname}
+	}
+
+	return a.SignedCertKey.Generate(cfg, ca, "machine-config-server", DoNotAppendParent)
 }
 
 // Name returns the human-friendly name of the asset.

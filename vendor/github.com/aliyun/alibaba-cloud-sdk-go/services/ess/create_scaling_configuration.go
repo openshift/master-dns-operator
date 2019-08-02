@@ -77,6 +77,8 @@ func (client *Client) CreateScalingConfigurationWithCallback(request *CreateScal
 type CreateScalingConfigurationRequest struct {
 	*requests.RpcRequest
 	ImageId                     string                                      `position:"Query" name:"ImageId"`
+	Memory                      requests.Integer                            `position:"Query" name:"Memory"`
+	HpcClusterId                string                                      `position:"Query" name:"HpcClusterId"`
 	ScalingGroupId              string                                      `position:"Query" name:"ScalingGroupId"`
 	InstanceTypes               *[]string                                   `position:"Query" name:"InstanceTypes"  type:"Repeated"`
 	IoOptimized                 string                                      `position:"Query" name:"IoOptimized"`
@@ -87,14 +89,21 @@ type CreateScalingConfigurationRequest struct {
 	SpotPriceLimit              *[]CreateScalingConfigurationSpotPriceLimit `position:"Query" name:"SpotPriceLimit"  type:"Repeated"`
 	SystemDiskCategory          string                                      `position:"Query" name:"SystemDisk.Category"`
 	UserData                    string                                      `position:"Query" name:"UserData"`
+	ResourceGroupId             string                                      `position:"Query" name:"ResourceGroupId"`
 	HostName                    string                                      `position:"Query" name:"HostName"`
+	Password                    string                                      `position:"Query" name:"Password"`
 	PasswordInherit             requests.Boolean                            `position:"Query" name:"PasswordInherit"`
 	ImageName                   string                                      `position:"Query" name:"ImageName"`
+	InstanceDescription         string                                      `position:"Query" name:"InstanceDescription"`
 	InstanceType                string                                      `position:"Query" name:"InstanceType"`
+	DeploymentSetId             string                                      `position:"Query" name:"DeploymentSetId"`
 	ResourceOwnerAccount        string                                      `position:"Query" name:"ResourceOwnerAccount"`
 	OwnerAccount                string                                      `position:"Query" name:"OwnerAccount"`
+	Cpu                         requests.Integer                            `position:"Query" name:"Cpu"`
+	SystemDiskDiskName          string                                      `position:"Query" name:"SystemDisk.DiskName"`
 	RamRoleName                 string                                      `position:"Query" name:"RamRoleName"`
 	OwnerId                     requests.Integer                            `position:"Query" name:"OwnerId"`
+	SecurityGroupIds            *[]string                                   `position:"Query" name:"SecurityGroupIds"  type:"Repeated"`
 	DataDisk                    *[]CreateScalingConfigurationDataDisk       `position:"Query" name:"DataDisk"  type:"Repeated"`
 	ScalingConfigurationName    string                                      `position:"Query" name:"ScalingConfigurationName"`
 	Tags                        string                                      `position:"Query" name:"Tags"`
@@ -104,6 +113,7 @@ type CreateScalingConfigurationRequest struct {
 	SystemDiskSize              requests.Integer                            `position:"Query" name:"SystemDisk.Size"`
 	InternetChargeType          string                                      `position:"Query" name:"InternetChargeType"`
 	InternetMaxBandwidthIn      requests.Integer                            `position:"Query" name:"InternetMaxBandwidthIn"`
+	SystemDiskDescription       string                                      `position:"Query" name:"SystemDisk.Description"`
 }
 
 // CreateScalingConfigurationSpotPriceLimit is a repeated param struct in CreateScalingConfigurationRequest
@@ -114,9 +124,13 @@ type CreateScalingConfigurationSpotPriceLimit struct {
 
 // CreateScalingConfigurationDataDisk is a repeated param struct in CreateScalingConfigurationRequest
 type CreateScalingConfigurationDataDisk struct {
+	DiskName           string `name:"DiskName"`
 	SnapshotId         string `name:"SnapshotId"`
 	Size               string `name:"Size"`
+	Encrypted          string `name:"Encrypted"`
+	Description        string `name:"Description"`
 	Category           string `name:"Category"`
+	KMSKeyId           string `name:"KMSKeyId"`
 	Device             string `name:"Device"`
 	DeleteWithInstance string `name:"DeleteWithInstance"`
 }

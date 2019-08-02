@@ -2,17 +2,28 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/cloudflare/cloudflare-go"
-	"github.com/codegangsta/cli"
+	"github.com/urfave/cli"
 )
 
-func dnsCreate(c *cli.Context) {
-	if err := checkEnv(); err != nil {
-		fmt.Println(err)
-		return
+func formatDNSRecord(record cloudflare.DNSRecord) []string {
+	return []string{
+		record.ID,
+		record.Name,
+		record.Type,
+		record.Content,
+		strconv.FormatInt(int64(record.TTL), 10),
+		strconv.FormatBool(record.Proxiable),
+		strconv.FormatBool(record.Proxied),
+		strconv.FormatBool(record.Locked),
 	}
+}
+
+func dnsCreate(c *cli.Context) {
 	if err := checkFlags(c, "zone", "name", "type", "content"); err != nil {
 		return
 	}
@@ -36,19 +47,22 @@ func dnsCreate(c *cli.Context) {
 		TTL:     ttl,
 		Proxied: proxy,
 	}
-	// TODO: Print the result.
-	_, err = api.CreateDNSRecord(zoneID, record)
+	resp, err := api.CreateDNSRecord(zoneID, record)
 	if err != nil {
-		fmt.Println("Error creating DNS record:", err)
+		fmt.Fprintln(os.Stderr, "Error creating DNS record: ", err)
+		return
 	}
+
+	output := [][]string{
+		formatDNSRecord(resp.Result),
+	}
+
+	writeTable(output, "ID", "Name", "Type", "Content", "TTL", "Proxiable", "Proxy", "Locked")
 }
 
 func dnsCreateOrUpdate(c *cli.Context) {
-	if err := checkEnv(); err != nil {
-		fmt.Println(err)
-		return
-	}
 	if err := checkFlags(c, "zone", "name", "type", "content"); err != nil {
+		fmt.Println(err)
 		return
 	}
 	zone := c.String("zone")
@@ -60,7 +74,7 @@ func dnsCreateOrUpdate(c *cli.Context) {
 
 	zoneID, err := api.ZoneIDByName(zone)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, "Error updating DNS record: ", err)
 		return
 	}
 
@@ -70,10 +84,11 @@ func dnsCreateOrUpdate(c *cli.Context) {
 	}
 	records, err := api.DNSRecords(zoneID, rr)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, "Error fetching DNS records: ", err)
 		return
 	}
 
+	var resp *cloudflare.DNSRecordResponse
 	if len(records) > 0 {
 		// Record exists - find the ID and update it.
 		// This is imprecise without knowing the original content; if a label
@@ -88,6 +103,10 @@ func dnsCreateOrUpdate(c *cli.Context) {
 				err := api.UpdateDNSRecord(zoneID, r.ID, rr)
 				if err != nil {
 					fmt.Println("Error updating DNS record:", err)
+					return
+				}
+				resp = &cloudflare.DNSRecordResponse{
+					Result: rr,
 				}
 			}
 		}
@@ -98,19 +117,24 @@ func dnsCreateOrUpdate(c *cli.Context) {
 		rr.TTL = ttl
 		rr.Proxied = proxy
 		// TODO: Print the response.
-		_, err := api.CreateDNSRecord(zoneID, rr)
+		resp, err = api.CreateDNSRecord(zoneID, rr)
 		if err != nil {
 			fmt.Println("Error creating DNS record:", err)
+			return
 		}
+
 	}
+
+	output := [][]string{
+		formatDNSRecord(resp.Result),
+	}
+
+	writeTable(output, "ID", "Name", "Type", "Content", "TTL", "Proxiable", "Proxy", "Locked")
 }
 
 func dnsUpdate(c *cli.Context) {
-	if err := checkEnv(); err != nil {
-		fmt.Println(err)
-		return
-	}
 	if err := checkFlags(c, "zone", "id"); err != nil {
+		fmt.Println(err)
 		return
 	}
 	zone := c.String("zone")
@@ -135,16 +159,14 @@ func dnsUpdate(c *cli.Context) {
 	}
 	err = api.UpdateDNSRecord(zoneID, recordID, record)
 	if err != nil {
-		fmt.Println("Error updating DNS record:", err)
+		fmt.Fprintln(os.Stderr, "Error updating DNS record: ", err)
+		return
 	}
 }
 
 func dnsDelete(c *cli.Context) {
-	if err := checkEnv(); err != nil {
-		fmt.Println(err)
-		return
-	}
 	if err := checkFlags(c, "zone", "id"); err != nil {
+		fmt.Println(err)
 		return
 	}
 	zone := c.String("zone")
@@ -158,6 +180,7 @@ func dnsDelete(c *cli.Context) {
 
 	err = api.DeleteDNSRecord(zoneID, recordID)
 	if err != nil {
-		fmt.Println("Error deleting DNS record:", err)
+		fmt.Fprintln(os.Stderr, "Error deleting DNS record: ", err)
+		return
 	}
 }

@@ -13,12 +13,15 @@ import (
 // subnetpool could not be created.
 func CreateSubnetPool(t *testing.T, client *gophercloud.ServiceClient) (*subnetpools.SubnetPool, error) {
 	subnetPoolName := tools.RandomString("TESTACC-", 8)
+	subnetPoolDescription := tools.RandomString("TESTACC-DESC-", 8)
 	subnetPoolPrefixes := []string{
 		"10.0.0.0/8",
 	}
 	createOpts := subnetpools.CreateOpts{
-		Name:     subnetPoolName,
-		Prefixes: subnetPoolPrefixes,
+		Name:             subnetPoolName,
+		Description:      subnetPoolDescription,
+		Prefixes:         subnetPoolPrefixes,
+		DefaultPrefixLen: 24,
 	}
 
 	t.Logf("Attempting to create a subnetpool: %s", subnetPoolName)
@@ -31,6 +34,7 @@ func CreateSubnetPool(t *testing.T, client *gophercloud.ServiceClient) (*subnetp
 	t.Logf("Successfully created the subnetpool.")
 
 	th.AssertEquals(t, subnetPool.Name, subnetPoolName)
+	th.AssertEquals(t, subnetPool.Description, subnetPoolDescription)
 
 	return subnetPool, nil
 }

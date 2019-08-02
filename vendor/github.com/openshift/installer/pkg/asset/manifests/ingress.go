@@ -2,28 +2,23 @@ package manifests
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 
+	configv1 "github.com/openshift/api/config/v1"
 	"github.com/openshift/installer/pkg/asset"
 	"github.com/openshift/installer/pkg/asset/installconfig"
-	"github.com/openshift/installer/pkg/asset/templates/content"
-
-	configv1 "github.com/openshift/api/config/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
-	ingCrdFilename = "cluster-ingress-01-crd.yaml"
 	ingCfgFilename = filepath.Join(manifestDir, "cluster-ingress-02-config.yml")
 )
 
 // Ingress generates the cluster-ingress-*.yml files.
 type Ingress struct {
-	config   *configv1.Ingress
 	FileList []*asset.File
 }
 
@@ -47,7 +42,7 @@ func (ing *Ingress) Generate(dependencies asset.Parents) error {
 	installConfig := &installconfig.InstallConfig{}
 	dependencies.Get(installConfig)
 
-	ing.config = &configv1.Ingress{
+	config := &configv1.Ingress{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: configv1.SchemeGroupVersion.String(),
 			Kind:       "Ingress",
@@ -57,25 +52,16 @@ func (ing *Ingress) Generate(dependencies asset.Parents) error {
 			// not namespaced
 		},
 		Spec: configv1.IngressSpec{
-			Domain: fmt.Sprintf("apps.%s.%s", installConfig.Config.ObjectMeta.Name, installConfig.Config.BaseDomain),
+			Domain: fmt.Sprintf("apps.%s", installConfig.Config.ClusterDomain()),
 		},
 	}
 
-	configData, err := yaml.Marshal(ing.config)
+	configData, err := yaml.Marshal(config)
 	if err != nil {
 		return errors.Wrapf(err, "failed to create %s manifests from InstallConfig", ing.Name())
 	}
 
-	crdData, err := content.GetBootkubeTemplate(ingCrdFilename)
-	if err != nil {
-		return err
-	}
-
 	ing.FileList = []*asset.File{
-		{
-			Filename: filepath.Join(manifestDir, ingCrdFilename),
-			Data:     []byte(crdData),
-		},
 		{
 			Filename: ingCfgFilename,
 			Data:     configData,
@@ -90,33 +76,7 @@ func (ing *Ingress) Files() []*asset.File {
 	return ing.FileList
 }
 
-// Load loads the already-rendered files back from disk.
+// Load returns false since this asset is not written to disk by the installer.
 func (ing *Ingress) Load(f asset.FileFetcher) (bool, error) {
-	crdFile, err := f.FetchByName(filepath.Join(manifestDir, ingCrdFilename))
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-		return false, err
-	}
-
-	cfgFile, err := f.FetchByName(ingCfgFilename)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-
-		return false, err
-	}
-
-	ingressConfig := &configv1.Ingress{}
-	if err := yaml.Unmarshal(cfgFile.Data, ingressConfig); err != nil {
-		return false, errors.Wrapf(err, "failed to unmarshal %s", ingCfgFilename)
-	}
-
-	fileList := []*asset.File{crdFile, cfgFile}
-
-	ing.FileList, ing.config = fileList, ingressConfig
-
-	return true, nil
+	return false, nil
 }

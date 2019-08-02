@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Database Service API
@@ -13,16 +13,16 @@ import (
 	"github.com/oracle/oci-go-sdk/common"
 )
 
-// CreateDbHomeWithDbSystemIdDetails The representation of CreateDbHomeWithDbSystemIdDetails
+// CreateDbHomeWithDbSystemIdDetails Note that a valid `dbSystemId` value must be supplied for the `CreateDbHomeWithDbSystemId` API operation to successfully complete.
 type CreateDbHomeWithDbSystemIdDetails struct {
 
-	// The OCID of the DB System.
-	DbSystemId *string `mandatory:"true" json:"dbSystemId"`
+	// A valid Oracle Database version. To get a list of supported versions, use the ListDbVersions operation.
+	DbVersion *string `mandatory:"true" json:"dbVersion"`
 
 	Database *CreateDatabaseDetails `mandatory:"true" json:"database"`
 
-	// A valid Oracle database version. To get a list of supported versions, use the ListDbVersions operation.
-	DbVersion *string `mandatory:"true" json:"dbVersion"`
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the DB system.
+	DbSystemId *string `mandatory:"false" json:"dbSystemId"`
 
 	// The user-provided name of the database home.
 	DisplayName *string `mandatory:"false" json:"displayName"`

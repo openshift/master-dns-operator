@@ -1,102 +1,50 @@
 package main
 
 import (
-	"errors"
-	"fmt"
-	"log"
 	"os"
-	"strings"
 
-	"github.com/cloudflare/cloudflare-go"
-	"github.com/codegangsta/cli"
+	cloudflare "github.com/cloudflare/cloudflare-go"
+	"github.com/urfave/cli"
 )
 
 var api *cloudflare.API
-
-// Map type used for printing a table
-type table map[string]string
-
-// Print a nicely-formatted table
-func makeTable(zones []table, cols ...string) {
-	// Store the maximum length of all columns
-	// The default is the length of the title
-	lens := make(map[string]int)
-	for _, col := range cols {
-		lens[col] = len(col)
-	}
-	// Increase the size of the column if it is larger than the current value
-	for _, z := range zones {
-		for col, val := range z {
-			if _, ok := lens[col]; ok && len(val) > lens[col] {
-				lens[col] = len(val)
-			}
-		}
-	}
-	// Print the headings and an underline for each heading
-	for _, col := range cols {
-		fmt.Printf("%s%s ", strings.Title(col), strings.Repeat(" ", lens[col]-len(col)))
-	}
-	fmt.Println()
-	for _, col := range cols {
-		fmt.Printf("%s ", strings.Repeat("-", lens[col]))
-	}
-	fmt.Println()
-	// And finally print the table data
-	for _, z := range zones {
-		for _, col := range cols {
-			fmt.Printf("%s%s ", z[col], strings.Repeat(" ", lens[col]-len(z[col])))
-		}
-		fmt.Println()
-	}
-
-}
-
-func checkEnv() error {
-	if api == nil {
-		var err error
-		api, err = cloudflare.New(os.Getenv("CF_API_KEY"), os.Getenv("CF_API_EMAIL"))
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-
-	if api.APIKey == "" {
-		return errors.New("API key not defined")
-	}
-	if api.APIEmail == "" {
-		return errors.New("API email not defined")
-	}
-
-	return nil
-}
-
-// Utility function to check if CLI flags were given.
-func checkFlags(c *cli.Context, flags ...string) error {
-	for _, flag := range flags {
-		if c.String(flag) == "" {
-			cli.ShowSubcommandHelp(c)
-			return fmt.Errorf("%s not specified", flag)
-		}
-	}
-	return nil
-}
 
 func main() {
 	app := cli.NewApp()
 	app.Name = "flarectl"
 	app.Usage = "Cloudflare CLI"
-	app.Version = "2016.4.0"
+	app.Version = "2017.10.0"
+	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:   "account-id",
+			Usage:  "Optional account ID",
+			Value:  "",
+			EnvVar: "CF_ACCOUNT_ID",
+		},
+	}
 	app.Commands = []cli.Command{
 		{
 			Name:    "ips",
 			Aliases: []string{"i"},
 			Action:  ips,
 			Usage:   "Print Cloudflare IP ranges",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "ip-type",
+					Usage: "type of IPs ( ipv4 | ipv6 | all )",
+					Value: "all",
+				},
+				cli.BoolFlag{
+					Name:  "ip-only",
+					Usage: "show only addresses",
+				},
+			},
 		},
 		{
 			Name:    "user",
 			Aliases: []string{"u"},
 			Usage:   "User information",
+			Before:  initializeAPI,
 			Subcommands: []cli.Command{
 				{
 					Name:    "info",
@@ -117,6 +65,7 @@ func main() {
 			Name:    "zone",
 			Aliases: []string{"z"},
 			Usage:   "Zone information",
+			Before:  initializeAPI,
 			Subcommands: []cli.Command{
 				{
 					Name:    "list",
@@ -180,6 +129,33 @@ func main() {
 					Usage:   "Settings for one zone",
 				},
 				{
+					Name:   "purge",
+					Action: zoneCachePurge,
+					Usage:  "(Selectively) Purge the cache for a zone",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "zone",
+							Usage: "zone name",
+						},
+						cli.BoolFlag{
+							Name:  "everything",
+							Usage: "purge everything from cache for the zone",
+						},
+						cli.StringSliceFlag{
+							Name:  "hosts",
+							Usage: "a list of hostnames to purge the cache for",
+						},
+						cli.StringSliceFlag{
+							Name:  "tags",
+							Usage: "the cache tags to purge (Enterprise only)",
+						},
+						cli.StringSliceFlag{
+							Name:  "files",
+							Usage: "a list of [exact] URLs to purge",
+						},
+					},
+				},
+				{
 					Name:    "dns",
 					Aliases: []string{"d"},
 					Action:  zoneRecords,
@@ -216,6 +192,7 @@ func main() {
 			Name:    "dns",
 			Aliases: []string{"d"},
 			Usage:   "DNS records",
+			Before:  initializeAPI,
 			Subcommands: []cli.Command{
 				{
 					Name:    "list",
@@ -358,11 +335,111 @@ func main() {
 				},
 			},
 		},
-
+		{
+			Name:    "user-agents",
+			Aliases: []string{"ua"},
+			Usage:   "User-Agent blocking",
+			Before:  initializeAPI,
+			Subcommands: []cli.Command{
+				{
+					Name:    "list",
+					Aliases: []string{"l"},
+					Action:  userAgentList,
+					Usage:   "List User-Agent blocks for a zone",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "zone",
+							Usage: "zone name",
+						},
+						cli.IntFlag{
+							Name:  "page",
+							Usage: "result page to return",
+						},
+					},
+				},
+				{
+					Name:    "create",
+					Aliases: []string{"c"},
+					Action:  userAgentCreate,
+					Usage:   "Create a User-Agent blocking rule",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "zone",
+							Usage: "zone name",
+						},
+						cli.StringFlag{
+							Name:  "mode",
+							Usage: "the blocking mode: block, challenge, js_challenge, whitelist",
+						},
+						cli.StringFlag{
+							Name:  "value",
+							Usage: "the exact User-Agent to block",
+						},
+						cli.BoolFlag{
+							Name:  "paused",
+							Usage: "whether the rule should be paused (default: false)",
+						},
+						cli.StringFlag{
+							Name:  "description",
+							Usage: "a description for the rule",
+						},
+					},
+				},
+				{
+					Name:    "update",
+					Aliases: []string{"u"},
+					Action:  userAgentUpdate,
+					Usage:   "Update an existing User-Agent block",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "zone",
+							Usage: "zone name",
+						},
+						cli.StringFlag{
+							Name:  "id",
+							Usage: "User-Agent blocking rule ID",
+						},
+						cli.StringFlag{
+							Name:  "mode",
+							Usage: "the blocking mode: block, challenge, js_challenge, whitelist",
+						},
+						cli.StringFlag{
+							Name:  "value",
+							Usage: "the exact User-Agent to block",
+						},
+						cli.BoolFlag{
+							Name:  "paused",
+							Usage: "whether the rule should be paused (default: false)",
+						},
+						cli.StringFlag{
+							Name:  "description",
+							Usage: "a description for the rule",
+						},
+					},
+				},
+				{
+					Name:    "delete",
+					Aliases: []string{"d"},
+					Action:  userAgentDelete,
+					Usage:   "Delete a User-Agent block",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "zone",
+							Usage: "zone name",
+						},
+						cli.StringFlag{
+							Name:  "id",
+							Usage: "User-Agent blocking rule ID",
+						},
+					},
+				},
+			},
+		},
 		{
 			Name:    "pagerules",
 			Aliases: []string{"p"},
 			Usage:   "Page Rules",
+			Before:  initializeAPI,
 			Subcommands: []cli.Command{
 				{
 					Name:    "list",
@@ -383,7 +460,161 @@ func main() {
 			Name:    "railgun",
 			Aliases: []string{"r"},
 			Usage:   "Railgun information",
+			Before:  initializeAPI,
 			Action:  railgun,
+		},
+
+		{
+			Name:    "firewall",
+			Aliases: []string{"f"},
+			Usage:   "Firewall",
+			Before:  initializeAPI,
+			Subcommands: []cli.Command{
+				{
+					Name:    "rules",
+					Aliases: []string{"r"},
+					Usage:   "Access Rules",
+					Subcommands: []cli.Command{
+						{
+							Name:    "list",
+							Aliases: []string{"l"},
+							Action:  firewallAccessRules,
+							Usage:   "List firewall access rules",
+							Flags: []cli.Flag{
+								cli.StringFlag{
+									Name:  "zone",
+									Usage: "zone name",
+								},
+								cli.StringFlag{
+									Name:  "organization",
+									Usage: "organization name",
+								},
+								cli.StringFlag{
+									Name:  "value",
+									Usage: "rule value",
+								},
+								cli.StringFlag{
+									Name:  "scope-type",
+									Usage: "rule scope",
+								},
+
+								cli.StringFlag{
+									Name:  "mode",
+									Usage: "rule mode",
+								},
+								cli.StringFlag{
+									Name:  "notes",
+									Usage: "rule notes",
+								},
+							},
+						},
+						{
+							Name:    "create",
+							Aliases: []string{"c"},
+							Action:  firewallAccessRuleCreate,
+							Usage:   "Create a firewall access rule",
+							Flags: []cli.Flag{
+								cli.StringFlag{
+									Name:  "zone",
+									Usage: "zone name",
+								},
+								cli.StringFlag{
+									Name:  "organization",
+									Usage: "organization name",
+								},
+								cli.StringFlag{
+									Name:  "value",
+									Usage: "rule value",
+								},
+								cli.StringFlag{
+									Name:  "mode",
+									Usage: "rule mode",
+								},
+								cli.StringFlag{
+									Name:  "notes",
+									Usage: "rule notes",
+								},
+							},
+						},
+						{
+							Name:    "update",
+							Aliases: []string{"u"},
+							Action:  firewallAccessRuleUpdate,
+							Usage:   "Update a firewall access rule",
+							Flags: []cli.Flag{
+								cli.StringFlag{
+									Name:  "id",
+									Usage: "rule id",
+								},
+								cli.StringFlag{
+									Name:  "zone",
+									Usage: "zone name",
+								},
+								cli.StringFlag{
+									Name:  "organization",
+									Usage: "organization name",
+								},
+								cli.StringFlag{
+									Name:  "mode",
+									Usage: "rule mode",
+								},
+								cli.StringFlag{
+									Name:  "notes",
+									Usage: "rule notes",
+								},
+							},
+						},
+						{
+							Name:    "create-or-update",
+							Aliases: []string{"o"},
+							Action:  firewallAccessRuleCreateOrUpdate,
+							Usage:   "Creatae a firewall access rule, or update it if it exists",
+							Flags: []cli.Flag{
+								cli.StringFlag{
+									Name:  "zone",
+									Usage: "zone name",
+								},
+								cli.StringFlag{
+									Name:  "organization",
+									Usage: "organization name",
+								},
+								cli.StringFlag{
+									Name:  "value",
+									Usage: "rule value",
+								},
+								cli.StringFlag{
+									Name:  "mode",
+									Usage: "rule mode",
+								},
+								cli.StringFlag{
+									Name:  "notes",
+									Usage: "rule notes",
+								},
+							},
+						},
+						{
+							Name:    "delete",
+							Aliases: []string{"d"},
+							Action:  firewallAccessRuleDelete,
+							Usage:   "Delete a firewall access rule",
+							Flags: []cli.Flag{
+								cli.StringFlag{
+									Name:  "id",
+									Usage: "rule id",
+								},
+								cli.StringFlag{
+									Name:  "zone",
+									Usage: "zone name",
+								},
+								cli.StringFlag{
+									Name:  "organization",
+									Usage: "organization name",
+								},
+							},
+						},
+					},
+				},
+			},
 		},
 	}
 	app.Run(os.Args)

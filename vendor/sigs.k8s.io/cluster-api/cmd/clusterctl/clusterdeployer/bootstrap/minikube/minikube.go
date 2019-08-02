@@ -23,7 +23,12 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/golang/glog"
+	"github.com/pkg/errors"
+	"k8s.io/klog"
+)
+
+const (
+	minikubeClusterName = "clusterapi"
 )
 
 type Minikube struct {
@@ -46,6 +51,19 @@ func WithOptionsAndKubeConfigPath(options []string, kubeconfigpath string) *Mini
 		// Arbitrary file name. Can potentially be randomly generated.
 		kubeconfigpath = "minikube.kubeconfig"
 	}
+
+	// Set profile if it is not provided.
+	if func() bool {
+		for _, opt := range options {
+			if strings.HasPrefix(opt, "p=") {
+				return false
+			}
+		}
+		return true
+	}() {
+		options = append(options, fmt.Sprintf("profile=%s", minikubeClusterName))
+	}
+
 	return &Minikube{
 		minikubeExec:   minikubeExec,
 		options:        options,
@@ -55,13 +73,13 @@ func WithOptionsAndKubeConfigPath(options []string, kubeconfigpath string) *Mini
 
 var minikubeExec = func(env []string, args ...string) (string, error) {
 	const executable = "minikube"
-	glog.V(3).Infof("Running: %v %v", executable, args)
+	klog.V(3).Infof("Running: %v %v", executable, args)
 	cmd := exec.Command(executable, args...)
 	cmd.Env = env
 	cmdOut, err := cmd.CombinedOutput()
-	glog.V(2).Infof("Ran: %v %v Output: %v", executable, args, string(cmdOut))
+	klog.V(2).Infof("Ran: %v %v Output: %v", executable, args, string(cmdOut))
 	if err != nil {
-		err = fmt.Errorf("error running command '%v %v': %v", executable, strings.Join(args, " "), err)
+		err = errors.Wrapf(err, "error running command '%v %v'", executable, strings.Join(args, " "))
 	}
 	return string(cmdOut), err
 }

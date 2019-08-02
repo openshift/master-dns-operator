@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
-	"github.com/cloudflare/cloudflare-go"
-	"github.com/codegangsta/cli"
+	cloudflare "github.com/cloudflare/cloudflare-go"
+	"github.com/urfave/cli"
 )
 
 func zoneCerts(*cli.Context) {
@@ -18,28 +19,30 @@ func zoneRailgun(*cli.Context) {
 }
 
 func zoneCreate(c *cli.Context) {
-	if err := checkEnv(); err != nil {
-		fmt.Println(err)
-		return
-	}
 	if err := checkFlags(c, "zone"); err != nil {
 		return
 	}
 	zone := c.String("zone")
 	jumpstart := c.Bool("jumpstart")
-	orgID := c.String("org-id")
+	accountID := c.String("account-id")
+	zoneType := c.String("type")
 	var org cloudflare.Organization
-	if orgID != "" {
-		org.ID = orgID
+	if accountID != "" {
+		org.ID = accountID
 	}
-	api.CreateZone(zone, jumpstart, org)
+
+	if zoneType != "partial" {
+		zoneType = "full"
+	}
+
+	_, err := api.CreateZone(zone, jumpstart, org, zoneType)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, fmt.Sprintf("%s", err))
+		return
+	}
 }
 
 func zoneCheck(c *cli.Context) {
-	if err := checkEnv(); err != nil {
-		fmt.Println(err)
-		return
-	}
 	if err := checkFlags(c, "zone"); err != nil {
 		return
 	}
@@ -60,32 +63,24 @@ func zoneCheck(c *cli.Context) {
 }
 
 func zoneList(c *cli.Context) {
-	if err := checkEnv(); err != nil {
-		fmt.Println(err)
-		return
-	}
 	zones, err := api.ListZones()
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	var output []table
+	output := make([][]string, 0, len(zones))
 	for _, z := range zones {
-		output = append(output, table{
-			"ID":     z.ID,
-			"Name":   z.Name,
-			"Plan":   z.Plan.Name,
-			"Status": z.Status,
+		output = append(output, []string{
+			z.ID,
+			z.Name,
+			z.Plan.Name,
+			z.Status,
 		})
 	}
-	makeTable(output, "ID", "Name", "Plan", "Status")
+	writeTable(output, "ID", "Name", "Plan", "Status")
 }
 
 func zoneInfo(c *cli.Context) {
-	if err := checkEnv(); err != nil {
-		fmt.Println(err)
-		return
-	}
 	var zone string
 	if len(c.Args()) > 0 {
 		zone = c.Args()[0]
@@ -100,7 +95,7 @@ func zoneInfo(c *cli.Context) {
 		fmt.Println(err)
 		return
 	}
-	var output []table
+	output := make([][]string, 0, len(zones))
 	for _, z := range zones {
 		var nameservers []string
 		if len(z.VanityNS) > 0 {
@@ -108,17 +103,17 @@ func zoneInfo(c *cli.Context) {
 		} else {
 			nameservers = z.NameServers
 		}
-		output = append(output, table{
-			"ID":           z.ID,
-			"Zone":         z.Name,
-			"Plan":         z.Plan.Name,
-			"Status":       z.Status,
-			"Name Servers": strings.Join(nameservers, ", "),
-			"Paused":       fmt.Sprintf("%t", z.Paused),
-			"Type":         z.Type,
+		output = append(output, []string{
+			z.ID,
+			z.Name,
+			z.Plan.Name,
+			z.Status,
+			strings.Join(nameservers, ", "),
+			fmt.Sprintf("%t", z.Paused),
+			z.Type,
 		})
 	}
-	makeTable(output, "ID", "Zone", "Plan", "Status", "Name Servers", "Paused", "Type")
+	writeTable(output, "ID", "Zone", "Plan", "Status", "Name Servers", "Paused", "Type")
 }
 
 func zonePlan(*cli.Context) {
@@ -127,11 +122,61 @@ func zonePlan(*cli.Context) {
 func zoneSettings(*cli.Context) {
 }
 
-func zoneRecords(c *cli.Context) {
-	if err := checkEnv(); err != nil {
-		fmt.Println(err)
+func zoneCachePurge(c *cli.Context) {
+	if err := checkFlags(c, "zone"); err != nil {
+		cli.ShowSubcommandHelp(c)
 		return
 	}
+
+	zoneName := c.String("zone")
+	zoneID, err := api.ZoneIDByName(c.String("zone"))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
+
+	var resp cloudflare.PurgeCacheResponse
+
+	// Purge everything
+	if c.Bool("everything") {
+		resp, err = api.PurgeEverything(zoneID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error purging all from zone %q: %s\n", zoneName, err)
+			return
+		}
+	} else {
+		var (
+			files = c.StringSlice("files")
+			tags  = c.StringSlice("tags")
+			hosts = c.StringSlice("hosts")
+		)
+
+		if len(files) == 0 && len(tags) == 0 && len(hosts) == 0 {
+			fmt.Fprintln(os.Stderr, "You must provide at least one of the --files, --tags or --hosts flags")
+			return
+		}
+
+		// Purge selectively
+		purgeReq := cloudflare.PurgeCacheRequest{
+			Files: c.StringSlice("files"),
+			Tags:  c.StringSlice("tags"),
+			Hosts: c.StringSlice("hosts"),
+		}
+
+		resp, err = api.PurgeCache(zoneID, purgeReq)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error purging the cache from zone %q: %s\n", zoneName, err)
+			return
+		}
+	}
+
+	output := make([][]string, 0, 1)
+	output = append(output, formatCacheResponse(resp))
+
+	writeTable(output, "ID")
+}
+
+func zoneRecords(c *cli.Context) {
 	var zone string
 	if len(c.Args()) > 0 {
 		zone = c.Args()[0]
@@ -172,7 +217,7 @@ func zoneRecords(c *cli.Context) {
 			return
 		}
 	}
-	var output []table
+	output := make([][]string, 0, len(records))
 	for _, r := range records {
 		switch r.Type {
 		case "MX":
@@ -185,14 +230,20 @@ func zoneRecords(c *cli.Context) {
 			// XXX: File this as a bug. LOC doesn't do this.
 			r.Content = strings.Replace(r.Content, "\t", " ", -1)
 		}
-		output = append(output, table{
-			"ID":      r.ID,
-			"Type":    r.Type,
-			"Name":    r.Name,
-			"Content": r.Content,
-			"Proxied": fmt.Sprintf("%t", r.Proxied),
-			"TTL":     fmt.Sprintf("%d", r.TTL),
+		output = append(output, []string{
+			r.ID,
+			r.Type,
+			r.Name,
+			r.Content,
+			fmt.Sprintf("%t", r.Proxied),
+			fmt.Sprintf("%d", r.TTL),
 		})
 	}
-	makeTable(output, "ID", "Type", "Name", "Content", "Proxied", "TTL")
+	writeTable(output, "ID", "Type", "Name", "Content", "Proxied", "TTL")
+}
+
+func formatCacheResponse(resp cloudflare.PurgeCacheResponse) []string {
+	return []string{
+		resp.Result.ID,
+	}
 }

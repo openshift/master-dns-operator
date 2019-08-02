@@ -25,16 +25,14 @@ import (
 	"strings"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/golang/glog"
-
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	intstrutil "k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/util/integer"
-
+	"k8s.io/klog"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
@@ -132,7 +130,7 @@ func MaxRevision(allMSs []*v1alpha1.MachineSet) int64 {
 	for _, ms := range allMSs {
 		if v, err := Revision(ms); err != nil {
 			// Skip the machine sets when it failed to parse their revision information
-			glog.V(4).Infof("Error: %v. Couldn't parse revision for machine set %#v, deployment controller will skip it when reconciling revisions.", err, ms)
+			klog.V(4).Infof("Error: %v. Couldn't parse revision for machine set %#v, deployment controller will skip it when reconciling revisions.", err, ms)
 		} else if v > max {
 			max = v
 		}
@@ -205,7 +203,7 @@ func getIntFromAnnotation(ms *v1alpha1.MachineSet, annotationKey string) (int32,
 	}
 	intValue, err := strconv.Atoi(annotationValue)
 	if err != nil {
-		glog.V(2).Infof("Cannot convert the value %q with annotation key %q for the machine set %q", annotationValue, annotationKey, ms.Name)
+		klog.V(2).Infof("Cannot convert the value %q with annotation key %q for the machine set %q", annotationValue, annotationKey, ms.Name)
 		return int32(0), false
 	}
 	return int32(intValue), true
@@ -228,7 +226,7 @@ func SetNewMachineSetAnnotations(deployment *v1alpha1.MachineDeployment, newMS *
 	oldRevisionInt, err := strconv.ParseInt(oldRevision, 10, 64)
 	if err != nil {
 		if oldRevision != "" {
-			glog.Warningf("Updating machine set revision OldRevision not int %s", err)
+			klog.Warningf("Updating machine set revision OldRevision not int %s", err)
 			return false
 		}
 		//If the MS annotation is empty then initialise it to 0
@@ -236,13 +234,13 @@ func SetNewMachineSetAnnotations(deployment *v1alpha1.MachineDeployment, newMS *
 	}
 	newRevisionInt, err := strconv.ParseInt(newRevision, 10, 64)
 	if err != nil {
-		glog.Warningf("Updating machine set revision NewRevision not int %s", err)
+		klog.Warningf("Updating machine set revision NewRevision not int %s", err)
 		return false
 	}
 	if oldRevisionInt < newRevisionInt {
 		newMS.Annotations[RevisionAnnotation] = newRevision
 		annotationChanged = true
-		glog.V(4).Infof("Updating machine set %q revision to %s", newMS.Name, newRevision)
+		klog.V(4).Infof("Updating machine set %q revision to %s", newMS.Name, newRevision)
 	}
 	// If a revision annotation already existed and this machine set was updated with a new revision
 	// then that means we are rolling back to this machine set. We need to preserve the old revisions
@@ -430,7 +428,7 @@ func FindNewMachineSet(deployment *v1alpha1.MachineDeployment, msList []*v1alpha
 //  - the second contains all old machine sets
 func FindOldMachineSets(deployment *v1alpha1.MachineDeployment, msList []*v1alpha1.MachineSet) ([]*v1alpha1.MachineSet, []*v1alpha1.MachineSet) {
 	var requiredMSs []*v1alpha1.MachineSet
-	var allMSs []*v1alpha1.MachineSet
+	allMSs := make([]*v1alpha1.MachineSet, 0, len(msList))
 	newMS := FindNewMachineSet(deployment, msList)
 	for _, ms := range msList {
 		// Filter out new machine set
@@ -504,7 +502,7 @@ func DeploymentComplete(deployment *v1alpha1.MachineDeployment, newStatus *v1alp
 }
 
 // NewMSNewReplicas calculates the number of replicas a deployment's new MS should have.
-// When one of the followings is true, we're rolling out the deployment; otherwise, we're scaling it.
+// When one of the following is true, we're rolling out the deployment; otherwise, we're scaling it.
 // 1) The new MS is saturated: newMS's replicas == deployment's replicas
 // 2) Max number of machines allowed is reached: deployment's replicas + maxSurge == all MSs' replicas
 func NewMSNewReplicas(deployment *v1alpha1.MachineDeployment, allMSs []*v1alpha1.MachineSet, newMS *v1alpha1.MachineSet) (int32, error) {
@@ -525,7 +523,7 @@ func NewMSNewReplicas(deployment *v1alpha1.MachineDeployment, allMSs []*v1alpha1
 		// Scale up.
 		scaleUpCount := maxTotalMachines - currentMachineCount
 		// Do not exceed the number of desired replicas.
-		scaleUpCount = int32(integer.Int32Min(scaleUpCount, *(deployment.Spec.Replicas)-*(newMS.Spec.Replicas)))
+		scaleUpCount = integer.Int32Min(scaleUpCount, *(deployment.Spec.Replicas)-*(newMS.Spec.Replicas))
 		return *(newMS.Spec.Replicas) + scaleUpCount, nil
 	default:
 		// Check if we can scale up.
@@ -543,9 +541,9 @@ func NewMSNewReplicas(deployment *v1alpha1.MachineDeployment, allMSs []*v1alpha1
 		// Scale up.
 		scaleUpCount := maxTotalMachines - currentMachineCount
 		// Do not exceed the number of desired replicas.
-		scaleUpCount = int32(integer.Int32Min(scaleUpCount, *(deployment.Spec.Replicas)-*(newMS.Spec.Replicas)))
+		scaleUpCount = integer.Int32Min(scaleUpCount, *(deployment.Spec.Replicas)-*(newMS.Spec.Replicas))
 		return *(newMS.Spec.Replicas) + scaleUpCount, nil
-		// -- return 0, fmt.Errorf("deployment type %v isn't supported", deployment.Spec.Strategy.Type)
+		// -- return 0, errors.Errorf("deployment type %v isn't supported", deployment.Spec.Strategy.Type)
 	}
 }
 

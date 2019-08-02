@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package database
@@ -11,10 +11,10 @@ import (
 // GetDbHomePatchHistoryEntryRequest wrapper for the GetDbHomePatchHistoryEntry operation
 type GetDbHomePatchHistoryEntryRequest struct {
 
-	// The database home OCID (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/identifiers.htm).
+	// The database home OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm).
 	DbHomeId *string `mandatory:"true" contributesTo:"path" name:"dbHomeId"`
 
-	// The OCID of the patch history entry.
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the patch history entry.
 	PatchHistoryEntryId *string `mandatory:"true" contributesTo:"path" name:"patchHistoryEntryId"`
 
 	// Unique Oracle-assigned identifier for the request.

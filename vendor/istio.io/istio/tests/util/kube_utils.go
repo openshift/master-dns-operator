@@ -47,6 +47,8 @@ const (
 
 	// LoadBalancerServiceType LoadBalancer type of Kubernetes Service
 	LoadBalancerServiceType = "LoadBalancer"
+
+	ingressHTTPServicePort = "80"
 )
 
 var (
@@ -56,6 +58,14 @@ var (
 		"ingress",
 	}
 )
+
+// PodInfo contains pod's information such as name and IP address
+type PodInfo struct {
+	// Name is the pod's name
+	Name string
+	// IPAddr is the pod's IP
+	IPAddr string
+}
 
 // Fill complete a template with given values and generate a new output file
 func Fill(outFile, inFile string, values interface{}) error {
@@ -89,7 +99,7 @@ func CreateAndFill(outDir, templateFile string, values interface{}) (string, err
 		return "", err
 	}
 	if err := Fill(outFile, templateFile, values); err != nil {
-		log.Errorf("Failed to generate yaml for template %s", templateFile)
+		log.Errorf("Failed to generate yaml for template %s: %v", templateFile, err)
 		return "", err
 	}
 	return outFile, nil
@@ -108,14 +118,30 @@ func CreateNamespace(n string, kubeconfig string) error {
 
 // DeleteNamespace delete a kubernetes namespace
 func DeleteNamespace(n string, kubeconfig string) error {
-	_, err := Shell("kubectl delete namespace %s --kubeconfig=%s", n, kubeconfig)
-	return err
+	if _, err := Shell("kubectl delete namespace %s --kubeconfig=%s", n, kubeconfig); err != nil {
+		if !strings.Contains(err.Error(), "not found") {
+			return err
+		}
+	}
+	log.Infof("namespace %s deleted\n", n)
+	return nil
 }
 
 // DeleteDeployment deletes deployment from the specified namespace
 func DeleteDeployment(d string, n string, kubeconfig string) error {
 	_, err := Shell("kubectl delete deployment %s -n %s --kubeconfig=%s", d, n, kubeconfig)
 	return err
+}
+
+// LabelNamespace will add a label to the kubernetes namespace
+func LabelNamespace(n, label, kubeconfig string) error {
+	if _, err := Shell("kubectl label namespace %s %s --kubeconfig=%s", n, label, kubeconfig); err != nil {
+		if !strings.Contains(err.Error(), "AlreadyExists") {
+			return err
+		}
+	}
+	log.Infof("label %s added to namespace %s", label, n)
+	return nil
 }
 
 // NamespaceDeleted check if a kubernete namespace is deleted
@@ -125,6 +151,12 @@ func NamespaceDeleted(n string, kubeconfig string) (bool, error) {
 		return true, nil
 	}
 	return false, err
+}
+
+// ValidatingWebhookConfigurationExists check if a kubernetes ValidatingWebhookConfiguration is deleted
+func ValidatingWebhookConfigurationExists(name string, kubeconfig string) bool {
+	output, _ := ShellSilent("kubectl get validatingwebhookconfiguration %s -o name --kubeconfig=%s", name, kubeconfig)
+	return !strings.Contains(output, "NotFound")
 }
 
 // KubeApplyContents kubectl apply from contents
@@ -147,6 +179,12 @@ func kubeCommand(subCommand, namespace, yamlFileName string, kubeconfig string) 
 // KubeApply kubectl apply from file
 func KubeApply(namespace, yamlFileName string, kubeconfig string) error {
 	_, err := Shell(kubeCommand("apply", namespace, yamlFileName, kubeconfig))
+	return err
+}
+
+// KubeCommand executes the given kubectl command with the given yaml file
+func KubeCommand(command, namespace, yamlFileName string, kubeconfig string) error {
+	_, err := Shell(kubeCommand(command, namespace, yamlFileName, kubeconfig))
 	return err
 }
 
@@ -183,31 +221,6 @@ func KubeScale(namespace, typeName string, replicaCount int, kubeconfig string) 
 	return err
 }
 
-// HelmInit init helm with a service account
-func HelmInit(serviceAccount string) error {
-	_, err := Shell("helm init --upgrade --service-account %s", serviceAccount)
-	return err
-}
-
-// HelmInstallDryRun helm install dry run from a chart for a given namespace
-func HelmInstallDryRun(chartDir, chartName, namespace, setValue string) error {
-	_, err := Shell("helm install --dry-run --debug %s --name %s --namespace %s %s", chartDir, chartName, namespace, setValue)
-	return err
-}
-
-// HelmInstall helm install from a chart for a given namespace
-//       --set stringArray        set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)
-func HelmInstall(chartDir, chartName, namespace, setValue string) error {
-	_, err := Shell("helm install %s --name %s --namespace %s %s", chartDir, chartName, namespace, setValue)
-	return err
-}
-
-// HelmDelete helm del --purge a chart
-func HelmDelete(chartName string) error {
-	_, err := Shell("helm del --purge %s", chartName)
-	return err
-}
-
 // KubeDeleteContents kubectl apply from contents
 func KubeDeleteContents(namespace, yamlContents string, kubeconfig string) error {
 	tmpfile, err := WriteTempfile(os.TempDir(), "kubedelete", ".yaml", yamlContents)
@@ -232,14 +245,13 @@ func KubeDelete(namespace, yamlFileName string, kubeconfig string) error {
 }
 
 // GetKubeMasterIP returns the IP address of the kubernetes master service.
-// TODO update next 2 func to pass in the kubeconfig
-func GetKubeMasterIP() (string, error) {
-	return ShellSilent("kubectl get svc kubernetes -n default -o jsonpath='{.spec.clusterIP}'")
+func GetKubeMasterIP(kubeconfig string) (string, error) {
+	return ShellSilent("kubectl get svc kubernetes -n default -o jsonpath='{.spec.clusterIP}' --kubeconfig=%s", kubeconfig)
 }
 
 // GetClusterSubnet returns the subnet (in CIDR form, e.g. "24") for the nodes in the cluster.
-func GetClusterSubnet() (string, error) {
-	cidr, err := ShellSilent("kubectl get nodes -o jsonpath='{.items[0].spec.podCIDR}'")
+func GetClusterSubnet(kubeconfig string) (string, error) {
+	cidr, err := ShellSilent("kubectl get nodes -o jsonpath='{.items[0].spec.podCIDR}' --kubeconfig=%s", kubeconfig)
 	if err != nil {
 		// This command should never fail. If the field isn't found, it will just return and empty string.
 		return "", err
@@ -274,7 +286,7 @@ func getRetrier(serviceType string) Retrier {
 // GetIngress get istio ingress ip and port. Could relate to either Istio Ingress or to
 // Istio Ingress Gateway, by serviceName and podLabel. Handles two cases: when the Ingress/Ingress Gateway
 // Kubernetes Service is a LoadBalancer or NodePort (for tests within the  cluster, including for minikube)
-func GetIngress(serviceName, podLabel, namespace, kubeconfig string, serviceType string) (string, error) {
+func GetIngress(serviceName, podLabel, namespace, kubeconfig string, serviceType string, sanityCheck bool) (string, error) {
 
 	retry := getRetrier(serviceType)
 	var ingress string
@@ -305,6 +317,10 @@ func GetIngress(serviceName, podLabel, namespace, kubeconfig string, serviceType
 
 	ctx, cancel := context.WithTimeout(ctx, 300*time.Second)
 	defer cancel()
+
+	if !sanityCheck {
+		return ingress, nil
+	}
 
 	client := &http.Client{Timeout: 5 * time.Second}
 	ingressURL := fmt.Sprintf("http://%s", ingress)
@@ -366,8 +382,8 @@ func getServiceNodePort(serviceName, podLabel, namespace, kubeconfig string) (st
 
 func getServicePort(serviceName, namespace, kubeconfig string) (string, error) {
 	port, err := Shell(
-		"kubectl get svc %s -n %s -o jsonpath='{.spec.ports[0].nodePort}' --kubeconfig=%s",
-		serviceName, namespace, kubeconfig)
+		"kubectl get svc %s -n %s -o jsonpath='{.spec.ports[?(@.port==%s)].nodePort}' --kubeconfig=%s",
+		serviceName, namespace, ingressHTTPServicePort, kubeconfig)
 
 	if err != nil {
 		return "", err
@@ -391,6 +407,30 @@ func GetIngressPodNames(n string, kubeconfig string) ([]string, error) {
 	}
 	res = strings.Trim(res, "'")
 	return strings.Split(res, " "), nil
+}
+
+// GetAppPodsInfo returns a map of a list of PodInfo
+func GetAppPodsInfo(n string, kubeconfig string, label string) ([]string, map[string][]string, error) {
+	// This will return a table where c0=pod_name and c1=label_value and c2=IPAddr.
+	// The columns are separated by a space and each result is on a separate line (separated by '\n').
+	res, err := Shell("kubectl -n %s -l=%s get pods -o=jsonpath='{range .items[*]}{.metadata.name}{\" \"}{"+
+		".metadata.labels.%s}{\" \"}{.status.podIP}{\"\\n\"}{end}' --kubeconfig=%s", n, label, label, kubeconfig)
+	if err != nil {
+		log.Infof("Failed to get pods by label %s in namespace %s: %s", label, n, err)
+		return nil, nil, err
+	}
+
+	var podNames []string
+	eps := make(map[string][]string)
+	for _, line := range strings.Split(res, "\n") {
+		f := strings.Fields(line)
+		if len(f) >= 3 {
+			podNames = append(podNames, f[0])
+			eps[f[1]] = append(eps[f[1]], f[2])
+		}
+	}
+
+	return podNames, eps, nil
 }
 
 // GetAppPods gets a map of app names to the pods for the app, for the given namespace
@@ -558,7 +598,46 @@ func CheckDeployment(ctx context.Context, namespace, deployment string, kubeconf
 	}
 }
 
-// CheckDeployments checks whether all deployment in a given namespace
+// CheckAppDeployment checks whether or not an app in a namespace is ready
+func CheckAppDeployment(namespace, deployment string, timeout time.Duration, kubeconfig string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	g, ctx := errgroup.WithContext(ctx)
+	g.Go(func() error { return CheckDeployment(ctx, namespace, "deployments/"+deployment, kubeconfig) })
+	return g.Wait()
+}
+
+// CheckDeploymentRemoved waits until a deployment is removed or times out
+func CheckDeploymentRemoved(namespace, deployment string, kubeconfig string) error {
+	retry := Retrier{
+		BaseDelay: 5 * time.Second,
+		MaxDelay:  5 * time.Second,
+		Retries:   60,
+	}
+
+	pod, err := GetPodName(namespace, "name="+deployment, kubeconfig)
+	// Pod has been removed
+	if err != nil {
+		log.Infof("pod %s is successfully removed", pod)
+		return nil
+	}
+	retryFn := func(_ context.Context, i int) error {
+		_, err := Shell("kubectl get pods %s -n %s --kubeconfig=%s", pod, namespace, kubeconfig)
+		if err != nil {
+			log.Infof("pod %s is successfully removed", pod)
+			return nil
+		}
+		return fmt.Errorf("%s in namespace %s still exists", pod, namespace)
+	}
+	ctx := context.Background()
+	_, err = retry.Retry(ctx, retryFn)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// CheckDeployments checks whether all deployments in a given namespace are ready
 func CheckDeployments(namespace string, timeout time.Duration, kubeconfig string) error {
 	// wait for istio-system deployments to be fully rolled out before proceeding
 	out, err := Shell("kubectl -n %s get deployment -o name --kubeconfig=%s", namespace, kubeconfig)
@@ -569,21 +648,38 @@ func CheckDeployments(namespace string, timeout time.Duration, kubeconfig string
 	defer cancel()
 	g, ctx := errgroup.WithContext(ctx)
 	deployments := strings.Fields(out)
+	deploymentStart := time.Now()
 	for i := range deployments {
 		deployment := deployments[i]
 		g.Go(func() error { return CheckDeployment(ctx, namespace, deployment, kubeconfig) })
 	}
-	return g.Wait()
+	gerr := g.Wait()
+	t := time.Now()
+	elapsed := t.Sub(deploymentStart)
+	log.Infof("Deployment rollout ends after [%v] with err [%v]", elapsed, gerr)
+	return gerr
 }
 
 // FetchAndSaveClusterLogs will dump the logs for a cluster.
 func FetchAndSaveClusterLogs(namespace string, tempDir string, kubeconfig string) error {
 	var multiErr error
 	fetchAndWrite := func(pod string) error {
+		// Log the description; if we fail to get the logs it may help
+		describeCmd := fmt.Sprintf("kubectl -n %s describe pod %s --kubeconfig=%s",
+			namespace, pod, kubeconfig)
+		describeOutput, errDescribe := Shell(describeCmd)
+		if errDescribe != nil {
+			log.Warnf("Error getting description for pod %s: %v\n", pod, errDescribe)
+			// don't bail, keep going
+		} else {
+			log.Info(describeOutput)
+		}
+
 		cmd := fmt.Sprintf(
 			"kubectl get pods -n %s %s -o jsonpath={.spec.containers[*].name} --kubeconfig=%s", namespace, pod, kubeconfig)
 		containersString, err := Shell(cmd)
 		if err != nil {
+			log.Warnf("Error getting containers for pod %s: %v\n", pod, err)
 			return err
 		}
 		containers := strings.Split(containersString, " ")
@@ -591,6 +687,7 @@ func FetchAndSaveClusterLogs(namespace string, tempDir string, kubeconfig string
 			filePath := filepath.Join(tempDir, fmt.Sprintf("%s_container:%s.log", pod, container))
 			f, err := os.Create(filePath)
 			if err != nil {
+				log.Warnf("Error creating %s for pod %s: %v\n", filePath, pod, err)
 				return err
 			}
 			defer func() {
@@ -601,21 +698,24 @@ func FetchAndSaveClusterLogs(namespace string, tempDir string, kubeconfig string
 			dump, err := ShellMuteOutput(
 				fmt.Sprintf("kubectl logs %s -n %s -c %s --kubeconfig=%s", pod, namespace, container, kubeconfig))
 			if err != nil {
-				return err
+				log.Warnf("Error getting logs for pod %s/%s container %s: %v\n", namespace, pod, container, err)
+				// don't stop if we can't get the current log; keep going
 			}
 
 			if _, err = f.WriteString(fmt.Sprintf("%s\n", dump)); err != nil {
+				log.Warnf("Error writing log dump to %s for pod %s/%s container %s: %v\n", filePath, namespace, pod, container, err)
 				return err
 			}
 
-			dump1, err := ShellMuteOutput(
+			dump1, err := ShellMuteOutputError(
 				fmt.Sprintf("kubectl logs %s -n %s -c %s -p --kubeconfig=%s", pod, namespace, container, kubeconfig))
 			if err != nil {
-				log.Infof("No previous log %v", err)
+				log.Infof("No previous log for %s", pod)
 			} else if len(dump1) > 0 {
 				filePath = filepath.Join(tempDir, fmt.Sprintf("%s_container:%s.prev.log", pod, container))
 				f1, err := os.Create(filePath)
 				if err != nil {
+					log.Warnf("Error creating %s for pod %s: %v\n", filePath, pod, err)
 					return err
 				}
 				defer func() {
@@ -624,6 +724,7 @@ func FetchAndSaveClusterLogs(namespace string, tempDir string, kubeconfig string
 					}
 				}()
 				if _, err = f1.WriteString(fmt.Sprintf("%s\n", dump1)); err != nil {
+					log.Warnf("Error writing log dump to %s for pod %s/%s container %s: %v\n", filePath, namespace, pod, container, err)
 					return err
 				}
 			}
@@ -658,14 +759,10 @@ func FetchAndSaveClusterLogs(namespace string, tempDir string, kubeconfig string
 		if yaml, err0 := ShellMuteOutput(
 			fmt.Sprintf("kubectl get %s -n %s -o yaml --kubeconfig=%s", resrc, namespace, kubeconfig)); err0 != nil {
 			multiErr = multierror.Append(multiErr, err0)
-		} else {
-			if f, err1 := os.Create(filePath); err1 != nil {
-				multiErr = multierror.Append(multiErr, err1)
-			} else {
-				if _, err2 := f.WriteString(fmt.Sprintf("%s\n", yaml)); err2 != nil {
-					multiErr = multierror.Append(multiErr, err2)
-				}
-			}
+		} else if f, err1 := os.Create(filePath); err1 != nil {
+			multiErr = multierror.Append(multiErr, err1)
+		} else if _, err2 := f.WriteString(fmt.Sprintf("%s\n", yaml)); err2 != nil {
+			multiErr = multierror.Append(multiErr, err2)
 		}
 	}
 	return multiErr
@@ -698,7 +795,7 @@ func WaitForDeploymentsReady(ns string, timeout time.Duration, kubeconfig string
 // CheckDeploymentsReady checks if deployment resources are ready.
 // get podsReady() sometimes gets pods created by the "Job" resource which never reach the "Running" steady state.
 func CheckDeploymentsReady(ns string, kubeconfig string) (int, error) {
-	CMD := "kubectl -n %s get deployments -ao jsonpath='{range .items[*]}{@.metadata.name}{\" \"}" +
+	CMD := "kubectl -n %s get deployments -o jsonpath='{range .items[*]}{@.metadata.name}{\" \"}" +
 		"{@.status.availableReplicas}{\"\\n\"}{end}' --kubeconfig=%s"
 	out, err := Shell(fmt.Sprintf(CMD, ns, kubeconfig))
 
@@ -766,27 +863,52 @@ func CheckPodRunning(n, name string, kubeconfig string) error {
 	return nil
 }
 
-// CreateMultiClusterSecrets will create the secrets and configmap associated with the remote cluster
-func CreateMultiClusterSecrets(namespace string, RemoteKubeConfig string, localKubeConfig string) error {
+// CreateMultiClusterSecret will create the secret associated with the remote cluster
+func CreateMultiClusterSecret(namespace string, remoteKubeConfig string, localKubeConfig string) error {
 	const (
 		secretLabel = "istio/multiCluster"
 		labelValue  = "true"
 	)
-	filename := filepath.Base(RemoteKubeConfig)
+	secretName := filepath.Base(remoteKubeConfig)
 
-	_, err := ShellMuteOutput("kubectl create secret generic %s --from-file %s -n %s --kubeconfig=%s", filename, RemoteKubeConfig, namespace, localKubeConfig)
+	_, err := ShellMuteOutput("kubectl create secret generic %s --from-file %s -n %s --kubeconfig=%s", secretName, remoteKubeConfig, namespace, localKubeConfig)
 	if err != nil {
+		log.Infof("Failed to create secret %s\n", secretName)
 		return err
 	}
-	log.Infof("Secret %s created\n", filename)
+	log.Infof("Secret %s created\n", secretName)
 
 	// label the secret for use as istio/multiCluster config
 	_, err = ShellMuteOutput("kubectl label secret %s %s=%s -n %s --kubeconfig=%s",
-		filename, secretLabel, labelValue, namespace, localKubeConfig)
+		secretName, secretLabel, labelValue, namespace, localKubeConfig)
 	if err != nil {
 		return err
 	}
 
-	log.Infof("Secret %s labelled with %s=%s\n", filename, secretLabel, labelValue)
+	log.Infof("Secret %s labeled with %s=%s\n", secretName, secretLabel, labelValue)
 	return nil
+}
+
+// DeleteMultiClusterSecret delete the remote cluster secret
+func DeleteMultiClusterSecret(namespace string, remoteKubeConfig string, localKubeConfig string) error {
+	secretName := filepath.Base(remoteKubeConfig)
+	_, err := ShellMuteOutput("kubectl delete secret %s -n %s --kubeconfig=%s", secretName, namespace, localKubeConfig)
+	if err != nil {
+		log.Errorf("Failed to delete secret %s: %v", secretName, err)
+	} else {
+		log.Infof("Deleted secret %s", secretName)
+	}
+	return err
+}
+
+// ReplaceInConfigMap will modify an existing configmap with the provided sed expression
+func ReplaceInConfigMap(namespace string, configmapName string, sedExpression string, kubeconfig string) error {
+	_, err := ShellMuteOutput("kubectl get configmap/%s -n %s --kubeconfig=%s -o yaml | sed \"%s\" | kubectl replace --kubeconfig=%s -f -",
+		configmapName, namespace, kubeconfig, sedExpression, kubeconfig)
+	if err != nil {
+		log.Errorf("Failed to edit the configmap %s: %v", configmapName, err)
+	} else {
+		log.Infof("Configmap %s updated with sed expression %s", configmapName, sedExpression)
+	}
+	return err
 }

@@ -76,6 +76,7 @@ func (client *Client) SetScdnDomainCertificateWithCallback(request *SetScdnDomai
 // SetScdnDomainCertificateRequest is the request struct for api SetScdnDomainCertificate
 type SetScdnDomainCertificateRequest struct {
 	*requests.RpcRequest
+	ForceSet      string           `position:"Query" name:"ForceSet"`
 	SecurityToken string           `position:"Query" name:"SecurityToken"`
 	CertType      string           `position:"Query" name:"CertType"`
 	SSLPub        string           `position:"Query" name:"SSLPub"`
@@ -98,7 +99,7 @@ func CreateSetScdnDomainCertificateRequest() (request *SetScdnDomainCertificateR
 	request = &SetScdnDomainCertificateRequest{
 		RpcRequest: &requests.RpcRequest{},
 	}
-	request.InitWithApiInfo("scdn", "2017-11-15", "SetScdnDomainCertificate", "", "")
+	request.InitWithApiInfo("scdn", "2017-11-15", "SetScdnDomainCertificate", "scdn", "openAPI")
 	return
 }
 

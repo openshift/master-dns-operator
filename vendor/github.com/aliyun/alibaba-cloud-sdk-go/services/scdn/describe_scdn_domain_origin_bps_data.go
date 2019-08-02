@@ -76,13 +76,11 @@ func (client *Client) DescribeScdnDomainOriginBpsDataWithCallback(request *Descr
 // DescribeScdnDomainOriginBpsDataRequest is the request struct for api DescribeScdnDomainOriginBpsData
 type DescribeScdnDomainOriginBpsDataRequest struct {
 	*requests.RpcRequest
-	StartTime     string           `position:"Query" name:"StartTime"`
-	SecurityToken string           `position:"Query" name:"SecurityToken"`
-	DomainName    string           `position:"Query" name:"DomainName"`
-	EndTime       string           `position:"Query" name:"EndTime"`
-	OwnerId       requests.Integer `position:"Query" name:"OwnerId"`
-	Version       string           `position:"Query" name:"Version"`
-	Interval      string           `position:"Query" name:"Interval"`
+	StartTime  string           `position:"Query" name:"StartTime"`
+	DomainName string           `position:"Query" name:"DomainName"`
+	EndTime    string           `position:"Query" name:"EndTime"`
+	OwnerId    requests.Integer `position:"Query" name:"OwnerId"`
+	Interval   string           `position:"Query" name:"Interval"`
 }
 
 // DescribeScdnDomainOriginBpsDataResponse is the response struct for api DescribeScdnDomainOriginBpsData
@@ -101,7 +99,7 @@ func CreateDescribeScdnDomainOriginBpsDataRequest() (request *DescribeScdnDomain
 	request = &DescribeScdnDomainOriginBpsDataRequest{
 		RpcRequest: &requests.RpcRequest{},
 	}
-	request.InitWithApiInfo("scdn", "2017-11-15", "DescribeScdnDomainOriginBpsData", "", "")
+	request.InitWithApiInfo("scdn", "2017-11-15", "DescribeScdnDomainOriginBpsData", "scdn", "openAPI")
 	return
 }
 

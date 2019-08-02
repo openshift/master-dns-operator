@@ -1,21 +1,44 @@
 package types
 
 import (
-	netopv1 "github.com/openshift/cluster-network-operator/pkg/apis/networkoperator/v1"
+	"fmt"
+
 	"github.com/openshift/installer/pkg/ipnet"
 	"github.com/openshift/installer/pkg/types/aws"
+	"github.com/openshift/installer/pkg/types/azure"
+	"github.com/openshift/installer/pkg/types/baremetal"
+	"github.com/openshift/installer/pkg/types/gcp"
 	"github.com/openshift/installer/pkg/types/libvirt"
+	"github.com/openshift/installer/pkg/types/none"
 	"github.com/openshift/installer/pkg/types/openstack"
+	"github.com/openshift/installer/pkg/types/vsphere"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	// InstallConfigVersion is the version supported by this package.
+	// If you bump this, you must also update the list of convertable values in
+	// pkg/types/conversion/installconfig.go
+	InstallConfigVersion = "v1"
+)
+
 var (
-	// PlatformNames is a slice with all the supported platform names in
-	// alphabetical order.
+	// PlatformNames is a slice with all the visibly-supported
+	// platform names in alphabetical order. This is the list of
+	// platforms presented to the user in the interactive wizard.
 	PlatformNames = []string{
 		aws.Name,
-		libvirt.Name,
+		azure.Name,
+		gcp.Name,
+	}
+	// HiddenPlatformNames is a slice with all the
+	// hidden-but-supported platform names. This list isn't presented
+	// to the user in the interactive wizard.
+	HiddenPlatformNames = []string{
+		baremetal.Name,
+		none.Name,
 		openstack.Name,
+		vsphere.Name,
 	}
 )
 
@@ -26,20 +49,29 @@ type InstallConfig struct {
 
 	metav1.ObjectMeta `json:"metadata"`
 
-	// ClusterID is the ID of the cluster.
-	ClusterID string `json:"clusterID"`
+	// AdditionalTrustBundle is a certificate bundle that will be added to the nodes
+	// trusted certificate store.
+	// +optional
+	AdditionalTrustBundle string `json:"additionalTrustBundle,omitempty"`
 
-	// Admin is the configuration for the admin user.
-	Admin Admin `json:"admin"`
+	// SSHKey is the public ssh key to provide access to instances.
+	// +optional
+	SSHKey string `json:"sshKey,omitempty"`
 
 	// BaseDomain is the base domain to which the cluster should belong.
 	BaseDomain string `json:"baseDomain"`
 
 	// Networking defines the pod network provider in the cluster.
-	Networking `json:"networking"`
+	*Networking `json:"networking,omitempty"`
 
-	// Machines is the list of MachinePools that need to be installed.
-	Machines []MachinePool `json:"machines"`
+	// ControlPlane is the configuration for the machines that comprise the
+	// control plane.
+	// +optional
+	ControlPlane *MachinePool `json:"controlPlane,omitempty"`
+
+	// Compute is the list of compute MachinePools that need to be installed.
+	// +optional
+	Compute []MachinePool `json:"compute,omitempty"`
 
 	// Platform is the configuration for the specific platform upon which to
 	// perform the installation.
@@ -47,75 +79,161 @@ type InstallConfig struct {
 
 	// PullSecret is the secret to use when pulling images.
 	PullSecret string `json:"pullSecret"`
+
+	// Proxy defines the proxy settings for the cluster.
+	// If unset, the cluster will not be configured to use a proxy.
+	// +optional
+	Proxy *Proxy `json:"proxy,omitempty"`
+
+	// ImageContentSources lists sources/repositories for the release-image content.
+	ImageContentSources []ImageContentSource `json:"imageContentSources,omitempty"`
 }
 
-// MasterCount returns the number of replicas in the master machine pool,
-// defaulting to one if no machine pool was found.
-func (c *InstallConfig) MasterCount() int {
-	for _, m := range c.Machines {
-		if m.Name == "master" && m.Replicas != nil {
-			return int(*m.Replicas)
-		}
-	}
-	return 1
-}
-
-// Admin is the configuration for the admin user.
-type Admin struct {
-	// Email is the email address of the admin user.
-	Email string `json:"email"`
-	// Password is the password of the admin user.
-	Password string `json:"password"`
-	// SSHKey to use for the access to compute instances.
-	SSHKey string `json:"sshKey,omitempty"`
+// ClusterDomain returns the DNS domain that all records for a cluster must belong to.
+func (c *InstallConfig) ClusterDomain() string {
+	return fmt.Sprintf("%s.%s", c.ObjectMeta.Name, c.BaseDomain)
 }
 
 // Platform is the configuration for the specific platform upon which to perform
 // the installation. Only one of the platform configuration should be set.
 type Platform struct {
 	// AWS is the configuration used when installing on AWS.
+	// +optional
 	AWS *aws.Platform `json:"aws,omitempty"`
 
+	// Azure is the configuration used when installing on Azure.
+	// +optional
+	Azure *azure.Platform `json:"azure,omitempty"`
+
+	// BareMetal is the configuration used when installing on bare metal.
+	// +optional
+	BareMetal *baremetal.Platform `json:"baremetal,omitempty"`
+
+	// GCP is the configuration used when installing on Google Cloud Platform.
+	// +optional
+	GCP *gcp.Platform `json:"gcp,omitempty"`
+
 	// Libvirt is the configuration used when installing on libvirt.
+	// +optional
 	Libvirt *libvirt.Platform `json:"libvirt,omitempty"`
 
+	// None is the empty configuration used when installing on an unsupported
+	// platform.
+	None *none.Platform `json:"none,omitempty"`
+
 	// OpenStack is the configuration used when installing on OpenStack.
+	// +optional
 	OpenStack *openstack.Platform `json:"openstack,omitempty"`
+
+	// VSphere is the configuration used when installing on vSphere.
+	// +optional
+	VSphere *vsphere.Platform `json:"vsphere,omitempty"`
 }
 
 // Name returns a string representation of the platform (e.g. "aws" if
 // AWS is non-nil).  It returns an empty string if no platform is
 // configured.
 func (p *Platform) Name() string {
-	if p == nil {
+	switch {
+	case p == nil:
+		return ""
+	case p.AWS != nil:
+		return aws.Name
+	case p.Azure != nil:
+		return azure.Name
+	case p.BareMetal != nil:
+		return baremetal.Name
+	case p.GCP != nil:
+		return gcp.Name
+	case p.Libvirt != nil:
+		return libvirt.Name
+	case p.None != nil:
+		return none.Name
+	case p.OpenStack != nil:
+		return openstack.Name
+	case p.VSphere != nil:
+		return vsphere.Name
+	default:
 		return ""
 	}
-	if p.AWS != nil {
-		return aws.Name
-	}
-	if p.Libvirt != nil {
-		return libvirt.Name
-	}
-	if p.OpenStack != nil {
-		return openstack.Name
-	}
-	return ""
 }
 
 // Networking defines the pod network provider in the cluster.
 type Networking struct {
-	// Type is the network type to install
-	Type netopv1.NetworkType `json:"type"`
+	// MachineCIDR is the IP address space from which to assign machine IPs.
+	// +optional
+	// Default is 10.0.0.0/16 for all platforms other than Libvirt.
+	// For Libvirt, the default is 192.168.126.0/24.
+	MachineCIDR *ipnet.IPNet `json:"machineCIDR,omitempty"`
 
-	// ServiceCIDR is the ip block from which to assign service IPs
-	ServiceCIDR ipnet.IPNet `json:"serviceCIDR"`
+	// NetworkType is the type of network to install.
+	// +optional
+	// Default is OpenShiftSDN.
+	NetworkType string `json:"networkType,omitempty"`
 
-	// ClusterNetworks is the IP address space from which to assign pod IPs.
-	ClusterNetworks []netopv1.ClusterNetwork `json:"clusterNetworks,omitempty"`
+	// ClusterNetwork is the IP address pool to use for pod IPs.
+	// +optional
+	// Default is 10.128.0.0/14 and a host prefix of /23
+	ClusterNetwork []ClusterNetworkEntry `json:"clusterNetwork,omitempty"`
 
-	// PodCIDR is deprecated (and badly named; it should have always
-	// been called ClusterCIDR. If no ClusterNetworks are specified,
-	// we will fall back to the PodCIDR
-	// TODO(cdc) remove this.
-	PodCIDR *ipnet.IPNet `json:"podCIDR,omitempty"`
+	// ServiceNetwork is the IP address pool to use for service IPs.
+	// +optional
+	// Default is 172.30.0.0/16
+	// NOTE: currently only one entry is supported.
+	ServiceNetwork []ipnet.IPNet `json:"serviceNetwork,omitempty"`
+
+	// Deprected types, scheduled to be removed
+
+	// Deprecated name for NetworkType
+	// +optional
+	DeprecatedType string `json:"type,omitempty"`
+
+	// Depcreated name for ServiceNetwork
+	// +optional
+	DeprecatedServiceCIDR *ipnet.IPNet `json:"serviceCIDR,omitempty"`
+
+	// Deprecated name for ClusterNetwork
+	// +optional
+	DeprecatedClusterNetworks []ClusterNetworkEntry `json:"clusterNetworks,omitempty"`
+}
+
+// ClusterNetworkEntry is a single IP address block for pod IP blocks. IP blocks
+// are allocated with size 2^HostSubnetLength.
+type ClusterNetworkEntry struct {
+	// The IP block address pool
+	CIDR ipnet.IPNet `json:"cidr"`
+
+	// HostPrefix is the prefix size to allocate to each node from the CIDR.
+	// For example, 24 would allocate 2^8=256 adresses to each node.
+	HostPrefix int32 `json:"hostPrefix"`
+
+	// The size of blocks to allocate from the larger pool.
+	// This is the length in bits - so a 9 here will allocate a /23.
+	DeprecatedHostSubnetLength int32 `json:"hostSubnetLength,omitempty"`
+}
+
+// Proxy defines the proxy settings for the cluster.
+// At least one of HTTPProxy or HTTPSProxy is required.
+type Proxy struct {
+	// HTTPProxy is the URL of the proxy for HTTP requests.
+	// +optional
+	HTTPProxy string `json:"httpProxy,omitempty"`
+
+	// HTTPSProxy is the URL of the proxy for HTTPS requests.
+	// +optional
+	HTTPSProxy string `json:"httpsProxy,omitempty"`
+
+	// NoProxy is a comma-separated list of domains and CIDRs for which the proxy should not be used.
+	// +optional
+	NoProxy string `json:"noProxy,omitempty"`
+}
+
+// ImageContentSource defines a list of sources/repositories that can be used to pull content.
+type ImageContentSource struct {
+	// Source is the repository that users refer to, e.g. in image pull specifications.
+	Source string `json:"source"`
+
+	// Mirrors is one or more repositories that may also contain the same images.
+	// +optional
+	Mirrors []string `json:"mirrors,omitempty"`
 }

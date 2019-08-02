@@ -5,8 +5,9 @@ package postaladdress
 
 import (
 	fmt "fmt"
-	proto "github.com/golang/protobuf/proto"
 	math "math"
+
+	proto "github.com/golang/protobuf/proto"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -18,7 +19,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 // Represents a postal address, e.g. for postal delivery or payments addresses.
 // Given a postal address, a postal service can deliver items to a premise, P.O.
@@ -31,7 +32,7 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 //
 // Advice on address input / editing:
 //  - Use an i18n-ready address widget such as
-//    https://github.com/googlei18n/libaddressinput)
+//    https://github.com/google/libaddressinput)
 // - Users should not be presented with UI elements for input or editing of
 //   fields outside countries where that field is used.
 //

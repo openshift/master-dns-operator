@@ -1,4 +1,4 @@
-// +build libvirt_destroy
+// +build libvirt
 
 package libvirt
 
@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
-	"github.com/openshift/installer/pkg/destroy"
+	"github.com/openshift/installer/pkg/destroy/providers"
 	"github.com/openshift/installer/pkg/types"
 )
 
@@ -17,15 +17,15 @@ import (
 // returns true, when the name should be handled.
 type filterFunc func(name string) bool
 
-// ClusterNamePrefixFilter returns true for names
-// that are prefixed with clustername.
-// `clustername` cannot be empty.
-var ClusterNamePrefixFilter = func(clustername string) filterFunc {
-	if clustername == "" {
-		panic("clustername cannot be empty")
+// ClusterIDPrefixFilter returns true for names
+// that are prefixed with clusterid.
+// `clusterid` cannot be empty.
+var ClusterIDPrefixFilter = func(clusterid string) filterFunc {
+	if clusterid == "" {
+		panic("clusterid cannot be empty")
 	}
 	return func(name string) bool {
-		return strings.HasPrefix(name, clustername)
+		return strings.HasPrefix(name, clusterid)
 	}
 }
 
@@ -47,6 +47,15 @@ type ClusterUninstaller struct {
 	Logger     logrus.FieldLogger
 }
 
+// New returns libvirt Uninstaller from ClusterMetadata.
+func New(logger logrus.FieldLogger, metadata *types.ClusterMetadata) (providers.Destroyer, error) {
+	return &ClusterUninstaller{
+		LibvirtURI: metadata.ClusterPlatformMetadata.Libvirt.URI,
+		Filter:     ClusterIDPrefixFilter(metadata.InfraID),
+		Logger:     logger,
+	}, nil
+}
+
 // Run is the entrypoint to start the uninstall process.
 func (o *ClusterUninstaller) Run() error {
 	conn, err := libvirt.NewConnect(o.LibvirtURI)
@@ -57,7 +66,7 @@ func (o *ClusterUninstaller) Run() error {
 	for _, del := range []deleteFunc{
 		deleteDomains,
 		deleteNetwork,
-		deleteVolumes,
+		deleteStoragePool,
 	} {
 		err = del(conn, o.Filter, o.Logger)
 		if err != nil {
@@ -104,10 +113,16 @@ func deleteDomainsSinglePass(conn *libvirt.Connect, filter filterFunc, logger lo
 		}
 
 		nothingToDelete = false
-		if err := domain.Destroy(); err != nil {
-			return false, errors.Wrapf(err, "destroy domain %q", dName)
+		dState, _, err := domain.GetState()
+		if err != nil {
+			return false, errors.Wrapf(err, "get domain state %d", dName)
 		}
 
+		if dState != libvirt.DOMAIN_SHUTOFF && dState != libvirt.DOMAIN_SHUTDOWN {
+			if err := domain.Destroy(); err != nil {
+				return false, errors.Wrapf(err, "destroy domain %q", dName)
+			}
+		}
 		if err := domain.Undefine(); err != nil {
 			return false, errors.Wrapf(err, "undefine domain %q", dName)
 		}
@@ -117,7 +132,7 @@ func deleteDomainsSinglePass(conn *libvirt.Connect, filter filterFunc, logger lo
 	return nothingToDelete, nil
 }
 
-func deleteVolumes(conn *libvirt.Connect, filter filterFunc, logger logrus.FieldLogger) error {
+func deleteStoragePool(conn *libvirt.Connect, filter filterFunc, logger logrus.FieldLogger) error {
 	logger.Debug("Deleting libvirt volumes")
 
 	pools, err := conn.ListStoragePools()
@@ -125,51 +140,49 @@ func deleteVolumes(conn *libvirt.Connect, filter filterFunc, logger logrus.Field
 		return errors.Wrap(err, "list storage pools")
 	}
 
-	tpool := "default"
 	for _, pname := range pools {
-		// pool name that returns true from filter, override default.
-		if filter(pname) {
-			tpool = pname
+		// pool name that returns true from filter
+		if !filter(pname) {
+			continue
 		}
-	}
-	pool, err := conn.LookupStoragePoolByName(tpool)
-	if err != nil {
-		return errors.Wrapf(err, "get storage pool %q", tpool)
-	}
-	defer pool.Free()
 
-	switch tpool {
-	case "default":
+		pool, err := conn.LookupStoragePoolByName(pname)
+		if err != nil {
+			return errors.Wrapf(err, "get storage pool %q", pname)
+		}
+		defer pool.Free()
+
 		// delete all vols that return true from filter.
 		vols, err := pool.ListAllStorageVolumes(0)
 		if err != nil {
-			return errors.Wrapf(err, "list volumes in %q", tpool)
+			return errors.Wrapf(err, "list volumes in %q", pname)
 		}
 
 		for _, vol := range vols {
 			defer vol.Free()
 			vName, err := vol.GetName()
 			if err != nil {
-				return errors.Wrapf(err, "get volume names in %q", tpool)
-			}
-			if !filter(vName) {
-				continue
+				return errors.Wrapf(err, "get volume names in %q", pname)
 			}
 			if err := vol.Delete(0); err != nil {
-				return errors.Wrapf(err, "delete volume %q from %q", vName, tpool)
+				return errors.Wrapf(err, "delete volume %q from %q", vName, pname)
 			}
 			logger.WithField("volume", vName).Info("Deleted volume")
 		}
-	default:
+
 		// blow away entire pool.
 		if err := pool.Destroy(); err != nil {
-			return errors.Wrapf(err, "destroy pool %q", tpool)
+			return errors.Wrapf(err, "destroy pool %q", pname)
+		}
+
+		if err := pool.Delete(0); err != nil {
+			return errors.Wrapf(err, "delete pool %q", pname)
 		}
 
 		if err := pool.Undefine(); err != nil {
-			return errors.Wrapf(err, "undefine pool %q", tpool)
+			return errors.Wrapf(err, "undefine pool %q", pname)
 		}
-		logger.WithField("pool", tpool).Info("Deleted pool")
+		logger.WithField("pool", pname).Info("Deleted pool")
 	}
 
 	return nil
@@ -203,13 +216,4 @@ func deleteNetwork(conn *libvirt.Connect, filter filterFunc, logger logrus.Field
 		logger.WithField("network", nName).Info("Deleted network")
 	}
 	return nil
-}
-
-// New returns libvirt Uninstaller from ClusterMetadata.
-func New(logger logrus.FieldLogger, metadata *types.ClusterMetadata) (destroy.Destroyer, error) {
-	return &ClusterUninstaller{
-		LibvirtURI: metadata.ClusterPlatformMetadata.Libvirt.URI,
-		Filter:     ClusterNamePrefixFilter(metadata.ClusterName),
-		Logger:     logger,
-	}, nil
 }

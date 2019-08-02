@@ -79,11 +79,9 @@ type DescribeScdnDomainBpsDataRequest struct {
 	LocationNameEn string           `position:"Query" name:"LocationNameEn"`
 	StartTime      string           `position:"Query" name:"StartTime"`
 	IspNameEn      string           `position:"Query" name:"IspNameEn"`
-	SecurityToken  string           `position:"Query" name:"SecurityToken"`
 	DomainName     string           `position:"Query" name:"DomainName"`
 	EndTime        string           `position:"Query" name:"EndTime"`
 	OwnerId        requests.Integer `position:"Query" name:"OwnerId"`
-	Version        string           `position:"Query" name:"Version"`
 	Interval       string           `position:"Query" name:"Interval"`
 }
 
@@ -103,7 +101,7 @@ func CreateDescribeScdnDomainBpsDataRequest() (request *DescribeScdnDomainBpsDat
 	request = &DescribeScdnDomainBpsDataRequest{
 		RpcRequest: &requests.RpcRequest{},
 	}
-	request.InitWithApiInfo("scdn", "2017-11-15", "DescribeScdnDomainBpsData", "", "")
+	request.InitWithApiInfo("scdn", "2017-11-15", "DescribeScdnDomainBpsData", "scdn", "openAPI")
 	return
 }
 

@@ -76,18 +76,20 @@ func (client *Client) ListFaceGroupsWithCallback(request *ListFaceGroupsRequest,
 // ListFaceGroupsRequest is the request struct for api ListFaceGroups
 type ListFaceGroupsRequest struct {
 	*requests.RpcRequest
-	MaxKeys requests.Integer `position:"Query" name:"MaxKeys"`
-	Marker  requests.Integer `position:"Query" name:"Marker"`
+	Marker  string           `position:"Query" name:"Marker"`
+	Limit   requests.Integer `position:"Query" name:"Limit"`
 	Project string           `position:"Query" name:"Project"`
 	SetId   string           `position:"Query" name:"SetId"`
+	OrderBy string           `position:"Query" name:"OrderBy"`
+	Order   string           `position:"Query" name:"Order"`
 }
 
 // ListFaceGroupsResponse is the response struct for api ListFaceGroups
 type ListFaceGroupsResponse struct {
 	*responses.BaseResponse
-	RequestId  string                       `json:"RequestId" xml:"RequestId"`
-	NextMarker int                          `json:"NextMarker" xml:"NextMarker"`
-	Groups     []GroupsItemInListFaceGroups `json:"Groups" xml:"Groups"`
+	RequestId  string           `json:"RequestId" xml:"RequestId"`
+	NextMarker string           `json:"NextMarker" xml:"NextMarker"`
+	FaceGroups []FaceGroupsItem `json:"FaceGroups" xml:"FaceGroups"`
 }
 
 // CreateListFaceGroupsRequest creates a request to invoke ListFaceGroups API

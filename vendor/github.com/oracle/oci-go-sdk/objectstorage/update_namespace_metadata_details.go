@@ -1,9 +1,9 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Object Storage Service API
 //
-// Common set of Object and Archive Storage APIs for managing buckets and objects.
+// Common set of Object Storage and Archive Storage APIs for managing buckets, objects, and related resources.
 //
 
 package objectstorage
@@ -12,14 +12,14 @@ import (
 	"github.com/oracle/oci-go-sdk/common"
 )
 
-// UpdateNamespaceMetadataDetails An UpdateNamespaceMetadataDetails is used for update NamespaceMetadata. To be able to upate the NamespaceMetadata, a user
-//  must have NAMESPACE_UPDATE permission.
+// UpdateNamespaceMetadataDetails UpdateNamespaceMetadataDetails is used to update the NamespaceMetadata. To update NamespaceMetadata, a user
+// must have NAMESPACE_UPDATE permission.
 type UpdateNamespaceMetadataDetails struct {
 
-	// The update compartment id for an S3 client if this field is set.
+	// The updated compartment id for use by an S3 client, if this field is set.
 	DefaultS3CompartmentId *string `mandatory:"false" json:"defaultS3CompartmentId"`
 
-	// The update compartment id for a Swift client if this field is set.
+	// The updated compartment id for use by a Swift client, if this field is set.
 	DefaultSwiftCompartmentId *string `mandatory:"false" json:"defaultSwiftCompartmentId"`
 }
 

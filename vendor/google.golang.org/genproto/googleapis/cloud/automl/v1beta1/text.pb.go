@@ -5,9 +5,10 @@ package automl
 
 import (
 	fmt "fmt"
+	math "math"
+
 	proto "github.com/golang/protobuf/proto"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
-	math "math"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -19,7 +20,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 // Dataset metadata for classification.
 type TextClassificationDatasetMetadata struct {
@@ -95,9 +96,156 @@ func (m *TextClassificationModelMetadata) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_TextClassificationModelMetadata proto.InternalMessageInfo
 
+// Dataset metadata that is specific to text extraction
+type TextExtractionDatasetMetadata struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *TextExtractionDatasetMetadata) Reset()         { *m = TextExtractionDatasetMetadata{} }
+func (m *TextExtractionDatasetMetadata) String() string { return proto.CompactTextString(m) }
+func (*TextExtractionDatasetMetadata) ProtoMessage()    {}
+func (*TextExtractionDatasetMetadata) Descriptor() ([]byte, []int) {
+	return fileDescriptor_c1121cf231f416fd, []int{2}
+}
+
+func (m *TextExtractionDatasetMetadata) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_TextExtractionDatasetMetadata.Unmarshal(m, b)
+}
+func (m *TextExtractionDatasetMetadata) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_TextExtractionDatasetMetadata.Marshal(b, m, deterministic)
+}
+func (m *TextExtractionDatasetMetadata) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TextExtractionDatasetMetadata.Merge(m, src)
+}
+func (m *TextExtractionDatasetMetadata) XXX_Size() int {
+	return xxx_messageInfo_TextExtractionDatasetMetadata.Size(m)
+}
+func (m *TextExtractionDatasetMetadata) XXX_DiscardUnknown() {
+	xxx_messageInfo_TextExtractionDatasetMetadata.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_TextExtractionDatasetMetadata proto.InternalMessageInfo
+
+// Model metadata that is specific to text extraction.
+type TextExtractionModelMetadata struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *TextExtractionModelMetadata) Reset()         { *m = TextExtractionModelMetadata{} }
+func (m *TextExtractionModelMetadata) String() string { return proto.CompactTextString(m) }
+func (*TextExtractionModelMetadata) ProtoMessage()    {}
+func (*TextExtractionModelMetadata) Descriptor() ([]byte, []int) {
+	return fileDescriptor_c1121cf231f416fd, []int{3}
+}
+
+func (m *TextExtractionModelMetadata) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_TextExtractionModelMetadata.Unmarshal(m, b)
+}
+func (m *TextExtractionModelMetadata) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_TextExtractionModelMetadata.Marshal(b, m, deterministic)
+}
+func (m *TextExtractionModelMetadata) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TextExtractionModelMetadata.Merge(m, src)
+}
+func (m *TextExtractionModelMetadata) XXX_Size() int {
+	return xxx_messageInfo_TextExtractionModelMetadata.Size(m)
+}
+func (m *TextExtractionModelMetadata) XXX_DiscardUnknown() {
+	xxx_messageInfo_TextExtractionModelMetadata.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_TextExtractionModelMetadata proto.InternalMessageInfo
+
+// Dataset metadata for text sentiment.
+type TextSentimentDatasetMetadata struct {
+	// Required.
+	// A sentiment is expressed as an integer ordinal, where higher value
+	// means a more positive sentiment. The range of sentiments that will be used
+	// is between 0 and sentiment_max (inclusive on both ends), and all the values
+	// in the range must be represented in the dataset before a model can be
+	// created.
+	// sentiment_max value must be between 1 and 10 (inclusive).
+	SentimentMax         int32    `protobuf:"varint,1,opt,name=sentiment_max,json=sentimentMax,proto3" json:"sentiment_max,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *TextSentimentDatasetMetadata) Reset()         { *m = TextSentimentDatasetMetadata{} }
+func (m *TextSentimentDatasetMetadata) String() string { return proto.CompactTextString(m) }
+func (*TextSentimentDatasetMetadata) ProtoMessage()    {}
+func (*TextSentimentDatasetMetadata) Descriptor() ([]byte, []int) {
+	return fileDescriptor_c1121cf231f416fd, []int{4}
+}
+
+func (m *TextSentimentDatasetMetadata) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_TextSentimentDatasetMetadata.Unmarshal(m, b)
+}
+func (m *TextSentimentDatasetMetadata) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_TextSentimentDatasetMetadata.Marshal(b, m, deterministic)
+}
+func (m *TextSentimentDatasetMetadata) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TextSentimentDatasetMetadata.Merge(m, src)
+}
+func (m *TextSentimentDatasetMetadata) XXX_Size() int {
+	return xxx_messageInfo_TextSentimentDatasetMetadata.Size(m)
+}
+func (m *TextSentimentDatasetMetadata) XXX_DiscardUnknown() {
+	xxx_messageInfo_TextSentimentDatasetMetadata.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_TextSentimentDatasetMetadata proto.InternalMessageInfo
+
+func (m *TextSentimentDatasetMetadata) GetSentimentMax() int32 {
+	if m != nil {
+		return m.SentimentMax
+	}
+	return 0
+}
+
+// Model metadata that is specific to text sentiment.
+type TextSentimentModelMetadata struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *TextSentimentModelMetadata) Reset()         { *m = TextSentimentModelMetadata{} }
+func (m *TextSentimentModelMetadata) String() string { return proto.CompactTextString(m) }
+func (*TextSentimentModelMetadata) ProtoMessage()    {}
+func (*TextSentimentModelMetadata) Descriptor() ([]byte, []int) {
+	return fileDescriptor_c1121cf231f416fd, []int{5}
+}
+
+func (m *TextSentimentModelMetadata) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_TextSentimentModelMetadata.Unmarshal(m, b)
+}
+func (m *TextSentimentModelMetadata) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_TextSentimentModelMetadata.Marshal(b, m, deterministic)
+}
+func (m *TextSentimentModelMetadata) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TextSentimentModelMetadata.Merge(m, src)
+}
+func (m *TextSentimentModelMetadata) XXX_Size() int {
+	return xxx_messageInfo_TextSentimentModelMetadata.Size(m)
+}
+func (m *TextSentimentModelMetadata) XXX_DiscardUnknown() {
+	xxx_messageInfo_TextSentimentModelMetadata.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_TextSentimentModelMetadata proto.InternalMessageInfo
+
 func init() {
 	proto.RegisterType((*TextClassificationDatasetMetadata)(nil), "google.cloud.automl.v1beta1.TextClassificationDatasetMetadata")
 	proto.RegisterType((*TextClassificationModelMetadata)(nil), "google.cloud.automl.v1beta1.TextClassificationModelMetadata")
+	proto.RegisterType((*TextExtractionDatasetMetadata)(nil), "google.cloud.automl.v1beta1.TextExtractionDatasetMetadata")
+	proto.RegisterType((*TextExtractionModelMetadata)(nil), "google.cloud.automl.v1beta1.TextExtractionModelMetadata")
+	proto.RegisterType((*TextSentimentDatasetMetadata)(nil), "google.cloud.automl.v1beta1.TextSentimentDatasetMetadata")
+	proto.RegisterType((*TextSentimentModelMetadata)(nil), "google.cloud.automl.v1beta1.TextSentimentModelMetadata")
 }
 
 func init() {
@@ -105,20 +253,27 @@ func init() {
 }
 
 var fileDescriptor_c1121cf231f416fd = []byte{
-	// 240 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x90, 0x31, 0x4f, 0x03, 0x31,
-	0x0c, 0x85, 0x75, 0x0b, 0x12, 0x19, 0x18, 0x8e, 0x05, 0x15, 0xa4, 0xd2, 0x0e, 0x88, 0x29, 0xa6,
-	0x30, 0x32, 0x51, 0x58, 0x2b, 0x55, 0xa8, 0x13, 0x0b, 0xb8, 0x39, 0x13, 0x45, 0x4a, 0xe3, 0xd0,
-	0xb8, 0xa8, 0xfd, 0x01, 0xfc, 0x6f, 0xd4, 0xe4, 0x18, 0x4e, 0x87, 0x6e, 0x4c, 0xfc, 0xbd, 0xe7,
-	0xf7, 0xac, 0x6e, 0x2c, 0xb3, 0xf5, 0x04, 0xc6, 0xf3, 0xae, 0x01, 0xdc, 0x09, 0x6f, 0x3c, 0x7c,
-	0xcf, 0xd6, 0x24, 0x38, 0x03, 0xa1, 0xbd, 0xe8, 0xb8, 0x65, 0xe1, 0xfa, 0xb2, 0x70, 0x3a, 0x73,
-	0xba, 0x70, 0xba, 0xe5, 0x46, 0x57, 0xad, 0x09, 0x46, 0x07, 0x18, 0x02, 0x0b, 0x8a, 0xe3, 0x90,
-	0x8a, 0x74, 0x74, 0x37, 0xb4, 0xc2, 0x78, 0x4c, 0xc9, 0x7d, 0x3a, 0x93, 0x25, 0x45, 0x31, 0xfd,
-	0xa9, 0xd4, 0x64, 0x45, 0x7b, 0x79, 0xee, 0x0c, 0x5f, 0x50, 0x30, 0x91, 0x2c, 0x48, 0xb0, 0x41,
-	0xc1, 0xfa, 0x43, 0x9d, 0x77, 0xd5, 0xef, 0x72, 0x88, 0x74, 0x51, 0x5d, 0x57, 0xb7, 0x67, 0xf7,
-	0xa0, 0x07, 0x02, 0xeb, 0xae, 0xf1, 0xea, 0x10, 0xe9, 0xb5, 0x36, 0xbd, 0xbf, 0xe9, 0x44, 0x8d,
-	0xfb, 0x31, 0x16, 0xdc, 0x90, 0xff, 0x0b, 0x31, 0xff, 0x52, 0x63, 0xc3, 0x9b, 0xa1, 0x65, 0xf3,
-	0xd3, 0xa3, 0xc7, 0xf2, 0x58, 0x6c, 0x59, 0xbd, 0x3d, 0xb5, 0xa4, 0x65, 0x8f, 0xc1, 0x6a, 0xde,
-	0x5a, 0xb0, 0x14, 0x72, 0x6d, 0x28, 0x23, 0x8c, 0x2e, 0xfd, 0x7b, 0xab, 0xc7, 0xf2, 0x5c, 0x9f,
-	0x64, 0xfa, 0xe1, 0x37, 0x00, 0x00, 0xff, 0xff, 0xc9, 0x8d, 0x0f, 0x20, 0xbb, 0x01, 0x00, 0x00,
+	// 342 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x91, 0xcf, 0x4a, 0x2b, 0x31,
+	0x14, 0xc6, 0x99, 0xc2, 0xbd, 0x70, 0xc3, 0xd5, 0x45, 0xdd, 0x48, 0xff, 0x58, 0x3b, 0x82, 0xb8,
+	0x4a, 0xac, 0xee, 0xc6, 0x55, 0x5b, 0xc5, 0x8d, 0x03, 0xa5, 0x16, 0x17, 0x52, 0xa8, 0xa7, 0xd3,
+	0x38, 0x0c, 0x64, 0x72, 0x86, 0xce, 0xa9, 0x4c, 0x1f, 0xc0, 0xf7, 0xf1, 0x39, 0x7c, 0x14, 0x9f,
+	0x42, 0x26, 0x99, 0x0a, 0xb1, 0xa5, 0xcb, 0xe4, 0xf7, 0x3b, 0x5f, 0xbe, 0x24, 0xec, 0x3c, 0x46,
+	0x8c, 0x95, 0x14, 0x91, 0xc2, 0xd5, 0x42, 0xc0, 0x8a, 0x30, 0x55, 0xe2, 0xad, 0x37, 0x97, 0x04,
+	0x3d, 0x41, 0xb2, 0x20, 0x9e, 0x2d, 0x91, 0xb0, 0xde, 0xb4, 0x1e, 0x37, 0x1e, 0xb7, 0x1e, 0xaf,
+	0xbc, 0xc6, 0xe5, 0xbe, 0x90, 0x48, 0x41, 0x9e, 0x27, 0xaf, 0x49, 0x04, 0x94, 0xa0, 0xb6, 0x71,
+	0x8d, 0x56, 0x35, 0x01, 0x59, 0x22, 0x40, 0x6b, 0x24, 0x03, 0x73, 0x4b, 0xfd, 0x77, 0x8f, 0x75,
+	0x27, 0xb2, 0xa0, 0xa1, 0x33, 0x7a, 0x0b, 0x04, 0xb9, 0xa4, 0x50, 0x12, 0x2c, 0x80, 0xa0, 0xfe,
+	0xc2, 0x8e, 0xdc, 0xec, 0x19, 0xad, 0x33, 0x79, 0xec, 0x9d, 0x7a, 0x17, 0x87, 0x57, 0x82, 0xef,
+	0x29, 0xcc, 0xdd, 0xe0, 0xc9, 0x3a, 0x93, 0xe3, 0x7a, 0xb4, 0xb5, 0xe7, 0x77, 0x59, 0x67, 0xbb,
+	0x46, 0x88, 0x0b, 0xa9, 0x36, 0x25, 0xfc, 0x0e, 0x6b, 0x97, 0xca, 0x5d, 0x41, 0x4b, 0x88, 0x76,
+	0xb4, 0xf4, 0xdb, 0xac, 0xe9, 0x0a, 0xee, 0xfc, 0x90, 0xb5, 0x4a, 0xfc, 0x28, 0x35, 0x25, 0xa9,
+	0xd4, 0xf4, 0xfb, 0x92, 0x67, 0xec, 0x20, 0xdf, 0xb0, 0x59, 0x0a, 0x85, 0xb9, 0xde, 0x9f, 0xf1,
+	0xff, 0x9f, 0xcd, 0x10, 0x0a, 0xbf, 0xc5, 0x1a, 0x4e, 0x88, 0x73, 0xc4, 0xe0, 0xc3, 0x63, 0x9d,
+	0x08, 0xd3, 0x7d, 0x0f, 0x32, 0xf8, 0x57, 0xce, 0x8f, 0xca, 0xc7, 0x1f, 0x79, 0xcf, 0xfd, 0xca,
+	0x8c, 0x51, 0x81, 0x8e, 0x39, 0x2e, 0x63, 0x11, 0x4b, 0x6d, 0xbe, 0x46, 0x58, 0x04, 0x59, 0x92,
+	0xef, 0xfc, 0xed, 0x1b, 0xbb, 0xfc, 0xac, 0x35, 0xef, 0x8d, 0x38, 0x1d, 0x96, 0xd2, 0xb4, 0xbf,
+	0x22, 0x0c, 0xd5, 0xf4, 0xc9, 0x4a, 0x5f, 0xb5, 0x13, 0x4b, 0x83, 0xc0, 0xe0, 0x20, 0x30, 0xfc,
+	0x21, 0x08, 0x2a, 0x61, 0xfe, 0xd7, 0x1c, 0x76, 0xfd, 0x1d, 0x00, 0x00, 0xff, 0xff, 0x5c, 0xfd,
+	0x49, 0xfc, 0x9e, 0x02, 0x00, 0x00,
 }

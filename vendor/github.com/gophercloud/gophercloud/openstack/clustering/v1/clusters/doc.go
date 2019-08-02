@@ -246,5 +246,42 @@ Example to remove nodes from a cluster
 		panic(err)
 	}
 
+Example to replace nodes for a cluster
+
+	replaceNodesOpts := clusters.ReplaceNodesOpts{
+		Nodes: map[string]string{"node-1234": "node-5678"},
+	}
+	clusterID := "b7b870e3-d3c5-4a93-b9d7-846c53b2c2da"
+	actionID, err := clusters.ReplaceNodes(serviceClient, clusterID, replaceNodesOpts).Extract()
+	if err != nil {
+		panic(err)
+	}
+
+Example to collect node attributes across a cluster
+
+	serviceClient.Microversion = "1.2"
+	clusterID := "b7b870e3-d3c5-4a93-b9d7-846c53b2c2da"
+	opts := clusters.CollectOpts{
+		Path: "status",
+	}
+	attrs, err := clusters.Collect(serviceClient, clusterID, opts).Extract()
+	if err != nil {
+		panic(err)
+	}
+
+Example to perform an operation on a cluster
+
+	serviceClient.Microversion = "1.4"
+	clusterID := "cluster123"
+	operationOpts := clusters.OperationOpts{
+		Operation: clusters.RebootOperation,
+		Filters:   clusters.OperationFilters{"role": "slave"},
+		Params:    clusters.OperationParams{"type": "SOFT"},
+	}
+	actionID, err := clusters.Ops(serviceClient, clusterID, operationOpts).Extract()
+	if err != nil {
+		panic(err)
+	}
+
 */
 package clusters

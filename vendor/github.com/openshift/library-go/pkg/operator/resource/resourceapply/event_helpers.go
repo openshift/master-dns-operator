@@ -2,14 +2,16 @@ package resourceapply
 
 import (
 	"fmt"
+	"strings"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	kubescheme "k8s.io/client-go/kubernetes/scheme"
 
 	openshiftapi "github.com/openshift/api"
+
 	"github.com/openshift/library-go/pkg/operator/events"
 )
 
@@ -41,11 +43,11 @@ func guessObjectGroupKind(object runtime.Object) (string, string) {
 func reportCreateEvent(recorder events.Recorder, obj runtime.Object, originalErr error) {
 	reportingGroup, reportingKind := guessObjectGroupKind(obj)
 	if len(reportingGroup) != 0 {
-		reportingGroup += "."
+		reportingGroup = "." + reportingGroup
 	}
 	accessor, err := meta.Accessor(obj)
 	if err != nil {
-		glog.Errorf("Failed to get accessor for %+v", obj)
+		klog.Errorf("Failed to get accessor for %+v", obj)
 		return
 	}
 	namespace := ""
@@ -59,23 +61,26 @@ func reportCreateEvent(recorder events.Recorder, obj runtime.Object, originalErr
 	recorder.Warningf(fmt.Sprintf("%sCreateFailed", reportingKind), "Failed to create %s%s/%s%s: %v", reportingKind, reportingGroup, accessor.GetName(), namespace, originalErr)
 }
 
-func reportUpdateEvent(recorder events.Recorder, obj runtime.Object, originalErr error) {
+func reportUpdateEvent(recorder events.Recorder, obj runtime.Object, originalErr error, details ...string) {
 	reportingGroup, reportingKind := guessObjectGroupKind(obj)
 	if len(reportingGroup) != 0 {
-		reportingGroup += "."
+		reportingGroup = "." + reportingGroup
 	}
 	accessor, err := meta.Accessor(obj)
 	if err != nil {
-		glog.Errorf("Failed to get accessor for %+v", obj)
+		klog.Errorf("Failed to get accessor for %+v", obj)
 		return
 	}
 	namespace := ""
 	if len(accessor.GetNamespace()) > 0 {
 		namespace = " -n " + accessor.GetNamespace()
 	}
-	if originalErr == nil {
+	switch {
+	case originalErr != nil:
+		recorder.Warningf(fmt.Sprintf("%sUpdateFailed", reportingKind), "Failed to update %s%s/%s%s: %v", reportingKind, reportingGroup, accessor.GetName(), namespace, originalErr)
+	case len(details) == 0:
 		recorder.Eventf(fmt.Sprintf("%sUpdated", reportingKind), "Updated %s%s/%s%s because it changed", reportingKind, reportingGroup, accessor.GetName(), namespace)
-		return
+	default:
+		recorder.Eventf(fmt.Sprintf("%sUpdated", reportingKind), "Updated %s%s/%s%s: %s", reportingKind, reportingGroup, accessor.GetName(), namespace, strings.Join(details, "\n"))
 	}
-	recorder.Warningf(fmt.Sprintf("%sUpdateFailed", reportingKind), "Failed to update %s%s/%s%s: %v", reportingKind, reportingGroup, accessor.GetName(), namespace, originalErr)
 }

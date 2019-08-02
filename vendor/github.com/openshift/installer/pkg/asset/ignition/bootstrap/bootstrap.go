@@ -2,7 +2,6 @@ package bootstrap
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,8 +12,10 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/containers/image/pkg/sysregistriesv2"
 	"github.com/coreos/ignition/config/util"
 	igntypes "github.com/coreos/ignition/config/v2_2/types"
+	configv1 "github.com/openshift/api/config/v1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
@@ -23,26 +24,28 @@ import (
 	"github.com/openshift/installer/pkg/asset/ignition"
 	"github.com/openshift/installer/pkg/asset/installconfig"
 	"github.com/openshift/installer/pkg/asset/kubeconfig"
+	"github.com/openshift/installer/pkg/asset/machines"
 	"github.com/openshift/installer/pkg/asset/manifests"
+	"github.com/openshift/installer/pkg/asset/releaseimage"
 	"github.com/openshift/installer/pkg/asset/tls"
 	"github.com/openshift/installer/pkg/types"
 )
 
 const (
-	rootDir              = "/opt/tectonic"
-	defaultReleaseImage  = "quay.io/openshift-release-dev/ocp-release:4.0.0-3"
+	rootDir              = "/opt/openshift"
 	bootstrapIgnFilename = "bootstrap.ign"
+	ignitionUser         = "core"
 )
 
 // bootstrapTemplateData is the data to use to replace values in bootstrap
 // template files.
 type bootstrapTemplateData struct {
-	EtcdCertSignerImage   string
+	AdditionalTrustBundle string
 	EtcdCluster           string
-	EtcdctlImage          string
 	PullSecret            string
 	ReleaseImage          string
-	AdminKubeConfigBase64 string
+	Proxy                 *configv1.ProxyStatus
+	Registries            []sysregistriesv2.Registry
 }
 
 // Bootstrap is an asset that generates the ignition config for bootstrap nodes.
@@ -57,32 +60,67 @@ var _ asset.WritableAsset = (*Bootstrap)(nil)
 func (a *Bootstrap) Dependencies() []asset.Asset {
 	return []asset.Asset{
 		&installconfig.InstallConfig{},
-		&tls.RootCA{},
-		&tls.EtcdCA{},
-		&tls.KubeCA{},
-		&tls.AggregatorCA{},
-		&tls.ServiceServingCA{},
-		&tls.EtcdClientCertKey{},
-		&tls.APIServerCertKey{},
-		&tls.APIServerProxyCertKey{},
-		&tls.AdminCertKey{},
-		&tls.KubeletCertKey{},
-		&tls.MCSCertKey{},
-		&tls.ServiceAccountKeyPair{},
-		&kubeconfig.Admin{},
+		&kubeconfig.AdminClient{},
 		&kubeconfig.Kubelet{},
+		&kubeconfig.LoopbackClient{},
+		&machines.Master{},
+		&machines.Worker{},
 		&manifests.Manifests{},
-		&manifests.Tectonic{},
+		&manifests.Openshift{},
+		&manifests.Proxy{},
+		&tls.AdminKubeConfigCABundle{},
+		&tls.AggregatorCA{},
+		&tls.AggregatorCABundle{},
+		&tls.AggregatorClientCertKey{},
+		&tls.AggregatorSignerCertKey{},
+		&tls.APIServerProxyCertKey{},
+		&tls.EtcdCABundle{},
+		&tls.EtcdMetricCABundle{},
+		&tls.EtcdMetricSignerCertKey{},
+		&tls.EtcdMetricSignerClientCertKey{},
+		&tls.EtcdSignerCertKey{},
+		&tls.EtcdSignerClientCertKey{},
+		&tls.JournalCertKey{},
+		&tls.KubeAPIServerLBCABundle{},
+		&tls.KubeAPIServerExternalLBServerCertKey{},
+		&tls.KubeAPIServerInternalLBServerCertKey{},
+		&tls.KubeAPIServerLBSignerCertKey{},
+		&tls.KubeAPIServerLocalhostCABundle{},
+		&tls.KubeAPIServerLocalhostServerCertKey{},
+		&tls.KubeAPIServerLocalhostSignerCertKey{},
+		&tls.KubeAPIServerServiceNetworkCABundle{},
+		&tls.KubeAPIServerServiceNetworkServerCertKey{},
+		&tls.KubeAPIServerServiceNetworkSignerCertKey{},
+		&tls.KubeAPIServerCompleteCABundle{},
+		&tls.KubeAPIServerCompleteClientCABundle{},
+		&tls.KubeAPIServerToKubeletCABundle{},
+		&tls.KubeAPIServerToKubeletClientCertKey{},
+		&tls.KubeAPIServerToKubeletSignerCertKey{},
+		&tls.KubeControlPlaneCABundle{},
+		&tls.KubeControlPlaneKubeControllerManagerClientCertKey{},
+		&tls.KubeControlPlaneKubeSchedulerClientCertKey{},
+		&tls.KubeControlPlaneSignerCertKey{},
+		&tls.KubeletBootstrapCABundle{},
+		&tls.KubeletClientCABundle{},
+		&tls.KubeletClientCertKey{},
+		&tls.KubeletCSRSignerCertKey{},
+		&tls.KubeletServingCABundle{},
+		&tls.MCSCertKey{},
+		&tls.RootCA{},
+		&tls.ServiceAccountKeyPair{},
+		&releaseimage.Image{},
 	}
 }
 
 // Generate generates the ignition config for the Bootstrap asset.
 func (a *Bootstrap) Generate(dependencies asset.Parents) error {
 	installConfig := &installconfig.InstallConfig{}
-	adminKubeConfig := &kubeconfig.Admin{}
-	dependencies.Get(installConfig, adminKubeConfig)
+	proxy := &manifests.Proxy{}
+	releaseImage := &releaseimage.Image{}
+	dependencies.Get(installConfig, proxy, releaseImage)
 
-	templateData, err := a.getTemplateData(installConfig.Config, adminKubeConfig.File.Data)
+	templateData, err := a.getTemplateData(installConfig.Config, releaseImage.PullSpec, installConfig.Config.ImageContentSources, proxy.Config)
+
 	if err != nil {
 		return errors.Wrap(err, "failed to get bootstrap templates")
 	}
@@ -101,11 +139,34 @@ func (a *Bootstrap) Generate(dependencies asset.Parents) error {
 	if err != nil {
 		return err
 	}
+
+	// Check for optional platform specific files/units
+	platform := installConfig.Config.Platform.Name()
+	platformFilePath := fmt.Sprintf("bootstrap/%s/files", platform)
+	directory, err := data.Assets.Open(platformFilePath)
+	if err == nil {
+		directory.Close()
+		err = a.addStorageFiles("/", platformFilePath, templateData)
+		if err != nil {
+			return err
+		}
+	}
+
+	platformUnitPath := fmt.Sprintf("bootstrap/%s/systemd/units", platform)
+	directory, err = data.Assets.Open(platformUnitPath)
+	if err == nil {
+		directory.Close()
+		err = a.addSystemdUnits(platformUnitPath, templateData)
+		if err != nil {
+			return err
+		}
+	}
+
 	a.addParentFiles(dependencies)
 
 	a.Config.Passwd.Users = append(
 		a.Config.Passwd.Users,
-		igntypes.PasswdUser{Name: "core", SSHAuthorizedKeys: []igntypes.SSHAuthorizedKey{igntypes.SSHAuthorizedKey(installConfig.Config.Admin.SSHKey)}},
+		igntypes.PasswdUser{Name: "core", SSHAuthorizedKeys: []igntypes.SSHAuthorizedKey{igntypes.SSHAuthorizedKey(installConfig.Config.SSHKey)}},
 	)
 
 	data, err := json.Marshal(a.Config)
@@ -134,25 +195,35 @@ func (a *Bootstrap) Files() []*asset.File {
 }
 
 // getTemplateData returns the data to use to execute bootstrap templates.
-func (a *Bootstrap) getTemplateData(installConfig *types.InstallConfig, adminKubeConfig []byte) (*bootstrapTemplateData, error) {
-	etcdEndpoints := make([]string, installConfig.MasterCount())
+func (a *Bootstrap) getTemplateData(installConfig *types.InstallConfig, releaseImage string, imageSources []types.ImageContentSource, proxy *configv1.Proxy) (*bootstrapTemplateData, error) {
+	etcdEndpoints := make([]string, *installConfig.ControlPlane.Replicas)
+
 	for i := range etcdEndpoints {
-		etcdEndpoints[i] = fmt.Sprintf("https://%s-etcd-%d.%s:2379", installConfig.ObjectMeta.Name, i, installConfig.BaseDomain)
+		etcdEndpoints[i] = fmt.Sprintf("https://etcd-%d.%s:2379", i, installConfig.ClusterDomain())
 	}
 
-	releaseImage := defaultReleaseImage
-	if ri, ok := os.LookupEnv("_OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE"); ok && ri != "" {
-		logrus.Warn("Found override for ReleaseImage. Please be warned, this is not advised")
-		releaseImage = ri
+	registries := []sysregistriesv2.Registry{}
+	for _, group := range mergedMirrorSets(imageSources) {
+		if len(group.Mirrors) == 0 {
+			continue
+		}
+
+		registry := sysregistriesv2.Registry{}
+		registry.Endpoint.Location = group.Source
+		registry.MirrorByDigestOnly = true
+		for _, mirror := range group.Mirrors {
+			registry.Mirrors = append(registry.Mirrors, sysregistriesv2.Endpoint{Location: mirror})
+		}
+		registries = append(registries, registry)
 	}
 
 	return &bootstrapTemplateData{
-		EtcdCertSignerImage:   "quay.io/coreos/kube-etcd-signer-server:678cc8e6841e2121ebfdb6e2db568fce290b67d6",
-		EtcdctlImage:          "quay.io/coreos/etcd:v3.2.14",
+		AdditionalTrustBundle: installConfig.AdditionalTrustBundle,
 		PullSecret:            installConfig.PullSecret,
 		ReleaseImage:          releaseImage,
 		EtcdCluster:           strings.Join(etcdEndpoints, ","),
-		AdminKubeConfigBase64: base64.StdEncoding.EncodeToString(adminKubeConfig),
+		Proxy:                 &proxy.Status,
+		Registries:            registries,
 	}, nil
 }
 
@@ -173,7 +244,9 @@ func (a *Bootstrap) addStorageFiles(base string, uri string, templateData *boots
 		if err != nil {
 			return err
 		}
-		file.Close()
+		if err = file.Close(); err != nil {
+			return err
+		}
 
 		for _, childInfo := range children {
 			name := childInfo.Name()
@@ -203,11 +276,7 @@ func (a *Bootstrap) addStorageFiles(base string, uri string, templateData *boots
 	} else {
 		mode = 0600
 	}
-	ign := ignition.FileFromBytes(strings.TrimSuffix(base, ".template"), mode, data)
-	if filename == ".bash_history" {
-		ign.User = &igntypes.NodeUser{Name: "core"}
-		ign.Group = &igntypes.NodeGroup{Name: "core"}
-	}
+	ign := ignition.FileFromBytes(strings.TrimSuffix(base, ".template"), "root", mode, data)
 	ign.Append = appendToFile
 	a.Config.Storage.Files = append(a.Config.Storage.Files, ign)
 
@@ -215,9 +284,15 @@ func (a *Bootstrap) addStorageFiles(base string, uri string, templateData *boots
 }
 
 func (a *Bootstrap) addSystemdUnits(uri string, templateData *bootstrapTemplateData) (err error) {
-	enabled := map[string]bool{
-		"progress.service": true,
-		"kubelet.service":  true,
+	enabled := map[string]struct{}{
+		"progress.service":                {},
+		"kubelet.service":                 {},
+		"chown-gatewayd-key.service":      {},
+		"systemd-journal-gatewayd.socket": {},
+		"approve-csr.service":             {},
+		// baremetal platform services
+		"keepalived.service": {},
+		"coredns.service":    {},
 	}
 
 	directory, err := data.Assets.Open(uri)
@@ -232,23 +307,75 @@ func (a *Bootstrap) addSystemdUnits(uri string, templateData *bootstrapTemplateD
 	}
 
 	for _, childInfo := range children {
-		name := childInfo.Name()
-		file, err := data.Assets.Open(path.Join(uri, name))
+		dir := path.Join(uri, childInfo.Name())
+		file, err := data.Assets.Open(dir)
 		if err != nil {
 			return err
 		}
 		defer file.Close()
 
-		name, data, err := readFile(name, file, templateData)
+		info, err := file.Stat()
 		if err != nil {
 			return err
 		}
 
-		unit := igntypes.Unit{Name: name, Contents: string(data)}
-		if _, ok := enabled[name]; ok {
-			unit.Enabled = util.BoolToPtr(true)
+		if info.IsDir() {
+			if dir := info.Name(); !strings.HasSuffix(dir, ".d") {
+				logrus.Tracef("Ignoring internal asset directory %q while looking for systemd drop-ins", dir)
+				continue
+			}
+
+			children, err := file.Readdir(0)
+			if err != nil {
+				return err
+			}
+			if err = file.Close(); err != nil {
+				return err
+			}
+
+			dropins := []igntypes.SystemdDropin{}
+			for _, childInfo := range children {
+				file, err := data.Assets.Open(path.Join(dir, childInfo.Name()))
+				if err != nil {
+					return err
+				}
+				defer file.Close()
+
+				childName, contents, err := readFile(childInfo.Name(), file, templateData)
+				if err != nil {
+					return err
+				}
+
+				dropins = append(dropins, igntypes.SystemdDropin{
+					Name:     childName,
+					Contents: string(contents),
+				})
+			}
+
+			name := strings.TrimSuffix(childInfo.Name(), ".d")
+			unit := igntypes.Unit{
+				Name:    name,
+				Dropins: dropins,
+			}
+			if _, ok := enabled[name]; ok {
+				unit.Enabled = util.BoolToPtr(true)
+			}
+			a.Config.Systemd.Units = append(a.Config.Systemd.Units, unit)
+		} else {
+			name, contents, err := readFile(childInfo.Name(), file, templateData)
+			if err != nil {
+				return err
+			}
+
+			unit := igntypes.Unit{
+				Name:     name,
+				Contents: string(contents),
+			}
+			if _, ok := enabled[name]; ok {
+				unit.Enabled = util.BoolToPtr(true)
+			}
+			a.Config.Systemd.Units = append(a.Config.Systemd.Units, unit)
 		}
-		a.Config.Systemd.Units = append(a.Config.Systemd.Units, unit)
 	}
 
 	return nil
@@ -278,54 +405,70 @@ func readFile(name string, reader io.Reader, templateData interface{}) (finalNam
 }
 
 func (a *Bootstrap) addParentFiles(dependencies asset.Parents) {
-	adminKubeconfig := &kubeconfig.Admin{}
-	kubeletKubeconfig := &kubeconfig.Kubelet{}
-	mfsts := &manifests.Manifests{}
-	tectonic := &manifests.Tectonic{}
-	dependencies.Get(adminKubeconfig, kubeletKubeconfig, mfsts, tectonic)
-
-	a.Config.Storage.Files = append(
-		a.Config.Storage.Files,
-		ignition.FilesFromAsset(rootDir, 0600, adminKubeconfig)...,
-	)
-	a.Config.Storage.Files = append(
-		a.Config.Storage.Files,
-		ignition.FileFromBytes("/etc/kubernetes/kubeconfig", 0600, kubeletKubeconfig.Files()[0].Data),
-		ignition.FileFromBytes("/var/lib/kubelet/kubeconfig", 0600, kubeletKubeconfig.Files()[0].Data),
-	)
-	a.Config.Storage.Files = append(
-		a.Config.Storage.Files,
-		ignition.FilesFromAsset(rootDir, 0644, mfsts)...,
-	)
-	a.Config.Storage.Files = append(
-		a.Config.Storage.Files,
-		ignition.FilesFromAsset(rootDir, 0644, tectonic)...,
-	)
-
+	// These files are all added with mode 0644, i.e. readable
+	// by all processes on the system.
 	for _, asset := range []asset.WritableAsset{
-		&tls.RootCA{},
-		&tls.KubeCA{},
-		&tls.AggregatorCA{},
-		&tls.ServiceServingCA{},
-		&tls.EtcdCA{},
-		&tls.EtcdClientCertKey{},
-		&tls.APIServerCertKey{},
-		&tls.APIServerProxyCertKey{},
-		&tls.AdminCertKey{},
-		&tls.KubeletCertKey{},
-		&tls.MCSCertKey{},
-		&tls.ServiceAccountKeyPair{},
+		&manifests.Manifests{},
+		&manifests.Openshift{},
+		&machines.Master{},
+		&machines.Worker{},
 	} {
 		dependencies.Get(asset)
-		a.Config.Storage.Files = append(a.Config.Storage.Files, ignition.FilesFromAsset(rootDir, 0600, asset)...)
+		a.Config.Storage.Files = append(a.Config.Storage.Files, ignition.FilesFromAsset(rootDir, "root", 0644, asset)...)
 	}
 
-	etcdClientCertKey := &tls.EtcdClientCertKey{}
-	dependencies.Get(etcdClientCertKey)
-	a.Config.Storage.Files = append(
-		a.Config.Storage.Files,
-		ignition.FileFromBytes("/etc/ssl/etcd/ca.crt", 0600, etcdClientCertKey.Cert()),
-	)
+	// These files are all added with mode 0600; use for secret keys and the like.
+	for _, asset := range []asset.WritableAsset{
+		&kubeconfig.AdminClient{},
+		&kubeconfig.Kubelet{},
+		&kubeconfig.LoopbackClient{},
+		&tls.AdminKubeConfigCABundle{},
+		&tls.AggregatorCA{},
+		&tls.AggregatorCABundle{},
+		&tls.AggregatorClientCertKey{},
+		&tls.AggregatorSignerCertKey{},
+		&tls.APIServerProxyCertKey{},
+		&tls.EtcdCABundle{},
+		&tls.EtcdMetricCABundle{},
+		&tls.EtcdMetricSignerCertKey{},
+		&tls.EtcdMetricSignerClientCertKey{},
+		&tls.EtcdSignerCertKey{},
+		&tls.EtcdSignerClientCertKey{},
+		&tls.KubeAPIServerLBCABundle{},
+		&tls.KubeAPIServerExternalLBServerCertKey{},
+		&tls.KubeAPIServerInternalLBServerCertKey{},
+		&tls.KubeAPIServerLBSignerCertKey{},
+		&tls.KubeAPIServerLocalhostCABundle{},
+		&tls.KubeAPIServerLocalhostServerCertKey{},
+		&tls.KubeAPIServerLocalhostSignerCertKey{},
+		&tls.KubeAPIServerServiceNetworkCABundle{},
+		&tls.KubeAPIServerServiceNetworkServerCertKey{},
+		&tls.KubeAPIServerServiceNetworkSignerCertKey{},
+		&tls.KubeAPIServerCompleteCABundle{},
+		&tls.KubeAPIServerCompleteClientCABundle{},
+		&tls.KubeAPIServerToKubeletCABundle{},
+		&tls.KubeAPIServerToKubeletClientCertKey{},
+		&tls.KubeAPIServerToKubeletSignerCertKey{},
+		&tls.KubeControlPlaneCABundle{},
+		&tls.KubeControlPlaneKubeControllerManagerClientCertKey{},
+		&tls.KubeControlPlaneKubeSchedulerClientCertKey{},
+		&tls.KubeControlPlaneSignerCertKey{},
+		&tls.KubeletBootstrapCABundle{},
+		&tls.KubeletClientCABundle{},
+		&tls.KubeletClientCertKey{},
+		&tls.KubeletCSRSignerCertKey{},
+		&tls.KubeletServingCABundle{},
+		&tls.MCSCertKey{},
+		&tls.ServiceAccountKeyPair{},
+		&tls.JournalCertKey{},
+	} {
+		dependencies.Get(asset)
+		a.Config.Storage.Files = append(a.Config.Storage.Files, ignition.FilesFromAsset(rootDir, "root", 0600, asset)...)
+	}
+
+	rootCA := &tls.RootCA{}
+	dependencies.Get(rootCA)
+	a.Config.Storage.Files = append(a.Config.Storage.Files, ignition.FileFromBytes(filepath.Join(rootDir, rootCA.CertFile().Filename), "root", 0644, rootCA.Cert()))
 }
 
 func applyTemplateData(template *template.Template, templateData interface{}) string {
@@ -348,7 +491,7 @@ func (a *Bootstrap) Load(f asset.FileFetcher) (found bool, err error) {
 
 	config := &igntypes.Config{}
 	if err := json.Unmarshal(file.Data, config); err != nil {
-		return false, errors.Wrapf(err, "failed to unmarshal")
+		return false, errors.Wrapf(err, "failed to unmarshal %s", bootstrapIgnFilename)
 	}
 
 	a.File, a.Config = file, config

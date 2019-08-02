@@ -3,46 +3,82 @@
 
 package envoy_admin_v2alpha
 
-import proto "github.com/gogo/protobuf/proto"
-import fmt "fmt"
-import math "math"
-import envoy_api_v22 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
-import envoy_api_v23 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
-import envoy_api_v24 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
-import envoy_config_bootstrap_v2 "github.com/envoyproxy/go-control-plane/envoy/config/bootstrap/v2"
-import google_protobuf6 "github.com/gogo/protobuf/types"
-import google_protobuf4 "github.com/gogo/protobuf/types"
-import _ "github.com/gogo/protobuf/gogoproto"
-
-import io "io"
+import (
+	fmt "fmt"
+	v21 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
+	auth "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
+	v2 "github.com/envoyproxy/go-control-plane/envoy/config/bootstrap/v2"
+	_ "github.com/gogo/protobuf/gogoproto"
+	proto "github.com/gogo/protobuf/proto"
+	types "github.com/gogo/protobuf/types"
+	io "io"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
+
 // The :ref:`/config_dump <operations_admin_interface_config_dump>` admin endpoint uses this wrapper
 // message to maintain and serve arbitrary configuration information from any component in Envoy.
 type ConfigDump struct {
-	// This map is serialized and dumped in its entirety at the
+	// This list is serialized and dumped in its entirety at the
 	// :ref:`/config_dump <operations_admin_interface_config_dump>` endpoint.
 	//
-	// Keys are a short descriptor of the config object they map to. The following keys (and the
-	// messages they map to) are currently supported:
+	// The following configurations are currently supported and will be dumped in the order given
+	// below:
 	//
 	// * *bootstrap*: :ref:`BootstrapConfigDump <envoy_api_msg_admin.v2alpha.BootstrapConfigDump>`
-	// * *listeners*: :ref:`ListenersConfigDump <envoy_api_msg_admin.v2alpha.ListenersConfigDump>`
 	// * *clusters*: :ref:`ClustersConfigDump <envoy_api_msg_admin.v2alpha.ClustersConfigDump>`
+	// * *listeners*: :ref:`ListenersConfigDump <envoy_api_msg_admin.v2alpha.ListenersConfigDump>`
 	// * *routes*:  :ref:`RoutesConfigDump <envoy_api_msg_admin.v2alpha.RoutesConfigDump>`
-	Configs map[string]google_protobuf6.Any `protobuf:"bytes,1,rep,name=configs" json:"configs" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
+	Configs              []*types.Any `protobuf:"bytes,1,rep,name=configs,proto3" json:"configs,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
+	XXX_unrecognized     []byte       `json:"-"`
+	XXX_sizecache        int32        `json:"-"`
 }
 
-func (m *ConfigDump) Reset()                    { *m = ConfigDump{} }
-func (m *ConfigDump) String() string            { return proto.CompactTextString(m) }
-func (*ConfigDump) ProtoMessage()               {}
-func (*ConfigDump) Descriptor() ([]byte, []int) { return fileDescriptorConfigDump, []int{0} }
+func (m *ConfigDump) Reset()         { *m = ConfigDump{} }
+func (m *ConfigDump) String() string { return proto.CompactTextString(m) }
+func (*ConfigDump) ProtoMessage()    {}
+func (*ConfigDump) Descriptor() ([]byte, []int) {
+	return fileDescriptor_bd4e190b1a64d2aa, []int{0}
+}
+func (m *ConfigDump) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ConfigDump) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ConfigDump.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ConfigDump) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ConfigDump.Merge(m, src)
+}
+func (m *ConfigDump) XXX_Size() int {
+	return m.Size()
+}
+func (m *ConfigDump) XXX_DiscardUnknown() {
+	xxx_messageInfo_ConfigDump.DiscardUnknown(m)
+}
 
-func (m *ConfigDump) GetConfigs() map[string]google_protobuf6.Any {
+var xxx_messageInfo_ConfigDump proto.InternalMessageInfo
+
+func (m *ConfigDump) GetConfigs() []*types.Any {
 	if m != nil {
 		return m.Configs
 	}
@@ -54,24 +90,55 @@ func (m *ConfigDump) GetConfigs() map[string]google_protobuf6.Any {
 // the static portions of an Envoy configuration by reusing the output as the bootstrap
 // configuration for another Envoy.
 type BootstrapConfigDump struct {
-	Bootstrap envoy_config_bootstrap_v2.Bootstrap `protobuf:"bytes,1,opt,name=bootstrap" json:"bootstrap"`
+	Bootstrap *v2.Bootstrap `protobuf:"bytes,1,opt,name=bootstrap,proto3" json:"bootstrap,omitempty"`
 	// The timestamp when the BootstrapConfig was last updated.
-	LastUpdated *google_protobuf4.Timestamp `protobuf:"bytes,2,opt,name=last_updated,json=lastUpdated" json:"last_updated,omitempty"`
+	LastUpdated          *types.Timestamp `protobuf:"bytes,2,opt,name=last_updated,json=lastUpdated,proto3" json:"last_updated,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
-func (m *BootstrapConfigDump) Reset()                    { *m = BootstrapConfigDump{} }
-func (m *BootstrapConfigDump) String() string            { return proto.CompactTextString(m) }
-func (*BootstrapConfigDump) ProtoMessage()               {}
-func (*BootstrapConfigDump) Descriptor() ([]byte, []int) { return fileDescriptorConfigDump, []int{1} }
+func (m *BootstrapConfigDump) Reset()         { *m = BootstrapConfigDump{} }
+func (m *BootstrapConfigDump) String() string { return proto.CompactTextString(m) }
+func (*BootstrapConfigDump) ProtoMessage()    {}
+func (*BootstrapConfigDump) Descriptor() ([]byte, []int) {
+	return fileDescriptor_bd4e190b1a64d2aa, []int{1}
+}
+func (m *BootstrapConfigDump) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *BootstrapConfigDump) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_BootstrapConfigDump.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *BootstrapConfigDump) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BootstrapConfigDump.Merge(m, src)
+}
+func (m *BootstrapConfigDump) XXX_Size() int {
+	return m.Size()
+}
+func (m *BootstrapConfigDump) XXX_DiscardUnknown() {
+	xxx_messageInfo_BootstrapConfigDump.DiscardUnknown(m)
+}
 
-func (m *BootstrapConfigDump) GetBootstrap() envoy_config_bootstrap_v2.Bootstrap {
+var xxx_messageInfo_BootstrapConfigDump proto.InternalMessageInfo
+
+func (m *BootstrapConfigDump) GetBootstrap() *v2.Bootstrap {
 	if m != nil {
 		return m.Bootstrap
 	}
-	return envoy_config_bootstrap_v2.Bootstrap{}
+	return nil
 }
 
-func (m *BootstrapConfigDump) GetLastUpdated() *google_protobuf4.Timestamp {
+func (m *BootstrapConfigDump) GetLastUpdated() *types.Timestamp {
 	if m != nil {
 		return m.LastUpdated
 	}
@@ -87,26 +154,57 @@ type ListenersConfigDump struct {
 	// will be "".
 	VersionInfo string `protobuf:"bytes,1,opt,name=version_info,json=versionInfo,proto3" json:"version_info,omitempty"`
 	// The statically loaded listener configs.
-	StaticListeners []ListenersConfigDump_StaticListener `protobuf:"bytes,2,rep,name=static_listeners,json=staticListeners" json:"static_listeners"`
+	StaticListeners []*ListenersConfigDump_StaticListener `protobuf:"bytes,2,rep,name=static_listeners,json=staticListeners,proto3" json:"static_listeners,omitempty"`
 	// The dynamically loaded active listeners. These are listeners that are available to service
 	// data plane traffic.
-	DynamicActiveListeners []ListenersConfigDump_DynamicListener `protobuf:"bytes,3,rep,name=dynamic_active_listeners,json=dynamicActiveListeners" json:"dynamic_active_listeners"`
+	DynamicActiveListeners []*ListenersConfigDump_DynamicListener `protobuf:"bytes,3,rep,name=dynamic_active_listeners,json=dynamicActiveListeners,proto3" json:"dynamic_active_listeners,omitempty"`
 	// The dynamically loaded warming listeners. These are listeners that are currently undergoing
 	// warming in preparation to service data plane traffic. Note that if attempting to recreate an
 	// Envoy configuration from a configuration dump, the warming listeners should generally be
 	// discarded.
-	DynamicWarmingListeners []ListenersConfigDump_DynamicListener `protobuf:"bytes,4,rep,name=dynamic_warming_listeners,json=dynamicWarmingListeners" json:"dynamic_warming_listeners"`
+	DynamicWarmingListeners []*ListenersConfigDump_DynamicListener `protobuf:"bytes,4,rep,name=dynamic_warming_listeners,json=dynamicWarmingListeners,proto3" json:"dynamic_warming_listeners,omitempty"`
 	// The dynamically loaded draining listeners. These are listeners that are currently undergoing
 	// draining in preparation to stop servicing data plane traffic. Note that if attempting to
 	// recreate an Envoy configuration from a configuration dump, the draining listeners should
 	// generally be discarded.
-	DynamicDrainingListeners []ListenersConfigDump_DynamicListener `protobuf:"bytes,5,rep,name=dynamic_draining_listeners,json=dynamicDrainingListeners" json:"dynamic_draining_listeners"`
+	DynamicDrainingListeners []*ListenersConfigDump_DynamicListener `protobuf:"bytes,5,rep,name=dynamic_draining_listeners,json=dynamicDrainingListeners,proto3" json:"dynamic_draining_listeners,omitempty"`
+	XXX_NoUnkeyedLiteral     struct{}                               `json:"-"`
+	XXX_unrecognized         []byte                                 `json:"-"`
+	XXX_sizecache            int32                                  `json:"-"`
 }
 
-func (m *ListenersConfigDump) Reset()                    { *m = ListenersConfigDump{} }
-func (m *ListenersConfigDump) String() string            { return proto.CompactTextString(m) }
-func (*ListenersConfigDump) ProtoMessage()               {}
-func (*ListenersConfigDump) Descriptor() ([]byte, []int) { return fileDescriptorConfigDump, []int{2} }
+func (m *ListenersConfigDump) Reset()         { *m = ListenersConfigDump{} }
+func (m *ListenersConfigDump) String() string { return proto.CompactTextString(m) }
+func (*ListenersConfigDump) ProtoMessage()    {}
+func (*ListenersConfigDump) Descriptor() ([]byte, []int) {
+	return fileDescriptor_bd4e190b1a64d2aa, []int{2}
+}
+func (m *ListenersConfigDump) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ListenersConfigDump) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ListenersConfigDump.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ListenersConfigDump) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListenersConfigDump.Merge(m, src)
+}
+func (m *ListenersConfigDump) XXX_Size() int {
+	return m.Size()
+}
+func (m *ListenersConfigDump) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListenersConfigDump.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListenersConfigDump proto.InternalMessageInfo
 
 func (m *ListenersConfigDump) GetVersionInfo() string {
 	if m != nil {
@@ -115,57 +213,86 @@ func (m *ListenersConfigDump) GetVersionInfo() string {
 	return ""
 }
 
-func (m *ListenersConfigDump) GetStaticListeners() []ListenersConfigDump_StaticListener {
+func (m *ListenersConfigDump) GetStaticListeners() []*ListenersConfigDump_StaticListener {
 	if m != nil {
 		return m.StaticListeners
 	}
 	return nil
 }
 
-func (m *ListenersConfigDump) GetDynamicActiveListeners() []ListenersConfigDump_DynamicListener {
+func (m *ListenersConfigDump) GetDynamicActiveListeners() []*ListenersConfigDump_DynamicListener {
 	if m != nil {
 		return m.DynamicActiveListeners
 	}
 	return nil
 }
 
-func (m *ListenersConfigDump) GetDynamicWarmingListeners() []ListenersConfigDump_DynamicListener {
+func (m *ListenersConfigDump) GetDynamicWarmingListeners() []*ListenersConfigDump_DynamicListener {
 	if m != nil {
 		return m.DynamicWarmingListeners
 	}
 	return nil
 }
 
-func (m *ListenersConfigDump) GetDynamicDrainingListeners() []ListenersConfigDump_DynamicListener {
+func (m *ListenersConfigDump) GetDynamicDrainingListeners() []*ListenersConfigDump_DynamicListener {
 	if m != nil {
 		return m.DynamicDrainingListeners
 	}
 	return nil
 }
 
-// Describes a statically loaded cluster.
+// Describes a statically loaded listener.
 type ListenersConfigDump_StaticListener struct {
 	// The listener config.
-	Listener *envoy_api_v23.Listener `protobuf:"bytes,1,opt,name=listener" json:"listener,omitempty"`
+	Listener *v21.Listener `protobuf:"bytes,1,opt,name=listener,proto3" json:"listener,omitempty"`
 	// The timestamp when the Listener was last updated.
-	LastUpdated *google_protobuf4.Timestamp `protobuf:"bytes,2,opt,name=last_updated,json=lastUpdated" json:"last_updated,omitempty"`
+	LastUpdated          *types.Timestamp `protobuf:"bytes,2,opt,name=last_updated,json=lastUpdated,proto3" json:"last_updated,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *ListenersConfigDump_StaticListener) Reset()         { *m = ListenersConfigDump_StaticListener{} }
 func (m *ListenersConfigDump_StaticListener) String() string { return proto.CompactTextString(m) }
 func (*ListenersConfigDump_StaticListener) ProtoMessage()    {}
 func (*ListenersConfigDump_StaticListener) Descriptor() ([]byte, []int) {
-	return fileDescriptorConfigDump, []int{2, 0}
+	return fileDescriptor_bd4e190b1a64d2aa, []int{2, 0}
+}
+func (m *ListenersConfigDump_StaticListener) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ListenersConfigDump_StaticListener) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ListenersConfigDump_StaticListener.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ListenersConfigDump_StaticListener) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListenersConfigDump_StaticListener.Merge(m, src)
+}
+func (m *ListenersConfigDump_StaticListener) XXX_Size() int {
+	return m.Size()
+}
+func (m *ListenersConfigDump_StaticListener) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListenersConfigDump_StaticListener.DiscardUnknown(m)
 }
 
-func (m *ListenersConfigDump_StaticListener) GetListener() *envoy_api_v23.Listener {
+var xxx_messageInfo_ListenersConfigDump_StaticListener proto.InternalMessageInfo
+
+func (m *ListenersConfigDump_StaticListener) GetListener() *v21.Listener {
 	if m != nil {
 		return m.Listener
 	}
 	return nil
 }
 
-func (m *ListenersConfigDump_StaticListener) GetLastUpdated() *google_protobuf4.Timestamp {
+func (m *ListenersConfigDump_StaticListener) GetLastUpdated() *types.Timestamp {
 	if m != nil {
 		return m.LastUpdated
 	}
@@ -180,17 +307,46 @@ type ListenersConfigDump_DynamicListener struct {
 	// by the API.
 	VersionInfo string `protobuf:"bytes,1,opt,name=version_info,json=versionInfo,proto3" json:"version_info,omitempty"`
 	// The listener config.
-	Listener *envoy_api_v23.Listener `protobuf:"bytes,2,opt,name=listener" json:"listener,omitempty"`
+	Listener *v21.Listener `protobuf:"bytes,2,opt,name=listener,proto3" json:"listener,omitempty"`
 	// The timestamp when the Listener was last updated.
-	LastUpdated *google_protobuf4.Timestamp `protobuf:"bytes,3,opt,name=last_updated,json=lastUpdated" json:"last_updated,omitempty"`
+	LastUpdated          *types.Timestamp `protobuf:"bytes,3,opt,name=last_updated,json=lastUpdated,proto3" json:"last_updated,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *ListenersConfigDump_DynamicListener) Reset()         { *m = ListenersConfigDump_DynamicListener{} }
 func (m *ListenersConfigDump_DynamicListener) String() string { return proto.CompactTextString(m) }
 func (*ListenersConfigDump_DynamicListener) ProtoMessage()    {}
 func (*ListenersConfigDump_DynamicListener) Descriptor() ([]byte, []int) {
-	return fileDescriptorConfigDump, []int{2, 1}
+	return fileDescriptor_bd4e190b1a64d2aa, []int{2, 1}
 }
+func (m *ListenersConfigDump_DynamicListener) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ListenersConfigDump_DynamicListener) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ListenersConfigDump_DynamicListener.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ListenersConfigDump_DynamicListener) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListenersConfigDump_DynamicListener.Merge(m, src)
+}
+func (m *ListenersConfigDump_DynamicListener) XXX_Size() int {
+	return m.Size()
+}
+func (m *ListenersConfigDump_DynamicListener) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListenersConfigDump_DynamicListener.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListenersConfigDump_DynamicListener proto.InternalMessageInfo
 
 func (m *ListenersConfigDump_DynamicListener) GetVersionInfo() string {
 	if m != nil {
@@ -199,14 +355,14 @@ func (m *ListenersConfigDump_DynamicListener) GetVersionInfo() string {
 	return ""
 }
 
-func (m *ListenersConfigDump_DynamicListener) GetListener() *envoy_api_v23.Listener {
+func (m *ListenersConfigDump_DynamicListener) GetListener() *v21.Listener {
 	if m != nil {
 		return m.Listener
 	}
 	return nil
 }
 
-func (m *ListenersConfigDump_DynamicListener) GetLastUpdated() *google_protobuf4.Timestamp {
+func (m *ListenersConfigDump_DynamicListener) GetLastUpdated() *types.Timestamp {
 	if m != nil {
 		return m.LastUpdated
 	}
@@ -222,21 +378,52 @@ type ClustersConfigDump struct {
 	// will be "".
 	VersionInfo string `protobuf:"bytes,1,opt,name=version_info,json=versionInfo,proto3" json:"version_info,omitempty"`
 	// The statically loaded cluster configs.
-	StaticClusters []ClustersConfigDump_StaticCluster `protobuf:"bytes,2,rep,name=static_clusters,json=staticClusters" json:"static_clusters"`
+	StaticClusters []*ClustersConfigDump_StaticCluster `protobuf:"bytes,2,rep,name=static_clusters,json=staticClusters,proto3" json:"static_clusters,omitempty"`
 	// The dynamically loaded active clusters. These are clusters that are available to service
 	// data plane traffic.
-	DynamicActiveClusters []ClustersConfigDump_DynamicCluster `protobuf:"bytes,3,rep,name=dynamic_active_clusters,json=dynamicActiveClusters" json:"dynamic_active_clusters"`
+	DynamicActiveClusters []*ClustersConfigDump_DynamicCluster `protobuf:"bytes,3,rep,name=dynamic_active_clusters,json=dynamicActiveClusters,proto3" json:"dynamic_active_clusters,omitempty"`
 	// The dynamically loaded warming clusters. These are clusters that are currently undergoing
 	// warming in preparation to service data plane traffic. Note that if attempting to recreate an
 	// Envoy configuration from a configuration dump, the warming clusters should generally be
 	// discarded.
-	DynamicWarmingClusters []ClustersConfigDump_DynamicCluster `protobuf:"bytes,4,rep,name=dynamic_warming_clusters,json=dynamicWarmingClusters" json:"dynamic_warming_clusters"`
+	DynamicWarmingClusters []*ClustersConfigDump_DynamicCluster `protobuf:"bytes,4,rep,name=dynamic_warming_clusters,json=dynamicWarmingClusters,proto3" json:"dynamic_warming_clusters,omitempty"`
+	XXX_NoUnkeyedLiteral   struct{}                             `json:"-"`
+	XXX_unrecognized       []byte                               `json:"-"`
+	XXX_sizecache          int32                                `json:"-"`
 }
 
-func (m *ClustersConfigDump) Reset()                    { *m = ClustersConfigDump{} }
-func (m *ClustersConfigDump) String() string            { return proto.CompactTextString(m) }
-func (*ClustersConfigDump) ProtoMessage()               {}
-func (*ClustersConfigDump) Descriptor() ([]byte, []int) { return fileDescriptorConfigDump, []int{3} }
+func (m *ClustersConfigDump) Reset()         { *m = ClustersConfigDump{} }
+func (m *ClustersConfigDump) String() string { return proto.CompactTextString(m) }
+func (*ClustersConfigDump) ProtoMessage()    {}
+func (*ClustersConfigDump) Descriptor() ([]byte, []int) {
+	return fileDescriptor_bd4e190b1a64d2aa, []int{3}
+}
+func (m *ClustersConfigDump) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ClustersConfigDump) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ClustersConfigDump.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ClustersConfigDump) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ClustersConfigDump.Merge(m, src)
+}
+func (m *ClustersConfigDump) XXX_Size() int {
+	return m.Size()
+}
+func (m *ClustersConfigDump) XXX_DiscardUnknown() {
+	xxx_messageInfo_ClustersConfigDump.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ClustersConfigDump proto.InternalMessageInfo
 
 func (m *ClustersConfigDump) GetVersionInfo() string {
 	if m != nil {
@@ -245,21 +432,21 @@ func (m *ClustersConfigDump) GetVersionInfo() string {
 	return ""
 }
 
-func (m *ClustersConfigDump) GetStaticClusters() []ClustersConfigDump_StaticCluster {
+func (m *ClustersConfigDump) GetStaticClusters() []*ClustersConfigDump_StaticCluster {
 	if m != nil {
 		return m.StaticClusters
 	}
 	return nil
 }
 
-func (m *ClustersConfigDump) GetDynamicActiveClusters() []ClustersConfigDump_DynamicCluster {
+func (m *ClustersConfigDump) GetDynamicActiveClusters() []*ClustersConfigDump_DynamicCluster {
 	if m != nil {
 		return m.DynamicActiveClusters
 	}
 	return nil
 }
 
-func (m *ClustersConfigDump) GetDynamicWarmingClusters() []ClustersConfigDump_DynamicCluster {
+func (m *ClustersConfigDump) GetDynamicWarmingClusters() []*ClustersConfigDump_DynamicCluster {
 	if m != nil {
 		return m.DynamicWarmingClusters
 	}
@@ -269,26 +456,55 @@ func (m *ClustersConfigDump) GetDynamicWarmingClusters() []ClustersConfigDump_Dy
 // Describes a statically loaded cluster.
 type ClustersConfigDump_StaticCluster struct {
 	// The cluster config.
-	Cluster *envoy_api_v22.Cluster `protobuf:"bytes,1,opt,name=cluster" json:"cluster,omitempty"`
+	Cluster *v21.Cluster `protobuf:"bytes,1,opt,name=cluster,proto3" json:"cluster,omitempty"`
 	// The timestamp when the Cluster was last updated.
-	LastUpdated *google_protobuf4.Timestamp `protobuf:"bytes,2,opt,name=last_updated,json=lastUpdated" json:"last_updated,omitempty"`
+	LastUpdated          *types.Timestamp `protobuf:"bytes,2,opt,name=last_updated,json=lastUpdated,proto3" json:"last_updated,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *ClustersConfigDump_StaticCluster) Reset()         { *m = ClustersConfigDump_StaticCluster{} }
 func (m *ClustersConfigDump_StaticCluster) String() string { return proto.CompactTextString(m) }
 func (*ClustersConfigDump_StaticCluster) ProtoMessage()    {}
 func (*ClustersConfigDump_StaticCluster) Descriptor() ([]byte, []int) {
-	return fileDescriptorConfigDump, []int{3, 0}
+	return fileDescriptor_bd4e190b1a64d2aa, []int{3, 0}
+}
+func (m *ClustersConfigDump_StaticCluster) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ClustersConfigDump_StaticCluster) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ClustersConfigDump_StaticCluster.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ClustersConfigDump_StaticCluster) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ClustersConfigDump_StaticCluster.Merge(m, src)
+}
+func (m *ClustersConfigDump_StaticCluster) XXX_Size() int {
+	return m.Size()
+}
+func (m *ClustersConfigDump_StaticCluster) XXX_DiscardUnknown() {
+	xxx_messageInfo_ClustersConfigDump_StaticCluster.DiscardUnknown(m)
 }
 
-func (m *ClustersConfigDump_StaticCluster) GetCluster() *envoy_api_v22.Cluster {
+var xxx_messageInfo_ClustersConfigDump_StaticCluster proto.InternalMessageInfo
+
+func (m *ClustersConfigDump_StaticCluster) GetCluster() *v21.Cluster {
 	if m != nil {
 		return m.Cluster
 	}
 	return nil
 }
 
-func (m *ClustersConfigDump_StaticCluster) GetLastUpdated() *google_protobuf4.Timestamp {
+func (m *ClustersConfigDump_StaticCluster) GetLastUpdated() *types.Timestamp {
 	if m != nil {
 		return m.LastUpdated
 	}
@@ -303,17 +519,46 @@ type ClustersConfigDump_DynamicCluster struct {
 	// the API.
 	VersionInfo string `protobuf:"bytes,1,opt,name=version_info,json=versionInfo,proto3" json:"version_info,omitempty"`
 	// The cluster config.
-	Cluster *envoy_api_v22.Cluster `protobuf:"bytes,2,opt,name=cluster" json:"cluster,omitempty"`
+	Cluster *v21.Cluster `protobuf:"bytes,2,opt,name=cluster,proto3" json:"cluster,omitempty"`
 	// The timestamp when the Cluster was last updated.
-	LastUpdated *google_protobuf4.Timestamp `protobuf:"bytes,3,opt,name=last_updated,json=lastUpdated" json:"last_updated,omitempty"`
+	LastUpdated          *types.Timestamp `protobuf:"bytes,3,opt,name=last_updated,json=lastUpdated,proto3" json:"last_updated,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *ClustersConfigDump_DynamicCluster) Reset()         { *m = ClustersConfigDump_DynamicCluster{} }
 func (m *ClustersConfigDump_DynamicCluster) String() string { return proto.CompactTextString(m) }
 func (*ClustersConfigDump_DynamicCluster) ProtoMessage()    {}
 func (*ClustersConfigDump_DynamicCluster) Descriptor() ([]byte, []int) {
-	return fileDescriptorConfigDump, []int{3, 1}
+	return fileDescriptor_bd4e190b1a64d2aa, []int{3, 1}
 }
+func (m *ClustersConfigDump_DynamicCluster) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ClustersConfigDump_DynamicCluster) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ClustersConfigDump_DynamicCluster.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ClustersConfigDump_DynamicCluster) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ClustersConfigDump_DynamicCluster.Merge(m, src)
+}
+func (m *ClustersConfigDump_DynamicCluster) XXX_Size() int {
+	return m.Size()
+}
+func (m *ClustersConfigDump_DynamicCluster) XXX_DiscardUnknown() {
+	xxx_messageInfo_ClustersConfigDump_DynamicCluster.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ClustersConfigDump_DynamicCluster proto.InternalMessageInfo
 
 func (m *ClustersConfigDump_DynamicCluster) GetVersionInfo() string {
 	if m != nil {
@@ -322,14 +567,14 @@ func (m *ClustersConfigDump_DynamicCluster) GetVersionInfo() string {
 	return ""
 }
 
-func (m *ClustersConfigDump_DynamicCluster) GetCluster() *envoy_api_v22.Cluster {
+func (m *ClustersConfigDump_DynamicCluster) GetCluster() *v21.Cluster {
 	if m != nil {
 		return m.Cluster
 	}
 	return nil
 }
 
-func (m *ClustersConfigDump_DynamicCluster) GetLastUpdated() *google_protobuf4.Timestamp {
+func (m *ClustersConfigDump_DynamicCluster) GetLastUpdated() *types.Timestamp {
 	if m != nil {
 		return m.LastUpdated
 	}
@@ -343,24 +588,55 @@ func (m *ClustersConfigDump_DynamicCluster) GetLastUpdated() *google_protobuf4.T
 // in RDS responses.
 type RoutesConfigDump struct {
 	// The statically loaded route configs.
-	StaticRouteConfigs []RoutesConfigDump_StaticRouteConfig `protobuf:"bytes,2,rep,name=static_route_configs,json=staticRouteConfigs" json:"static_route_configs"`
+	StaticRouteConfigs []*RoutesConfigDump_StaticRouteConfig `protobuf:"bytes,2,rep,name=static_route_configs,json=staticRouteConfigs,proto3" json:"static_route_configs,omitempty"`
 	// The dynamically loaded route configs.
-	DynamicRouteConfigs []RoutesConfigDump_DynamicRouteConfig `protobuf:"bytes,3,rep,name=dynamic_route_configs,json=dynamicRouteConfigs" json:"dynamic_route_configs"`
+	DynamicRouteConfigs  []*RoutesConfigDump_DynamicRouteConfig `protobuf:"bytes,3,rep,name=dynamic_route_configs,json=dynamicRouteConfigs,proto3" json:"dynamic_route_configs,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                               `json:"-"`
+	XXX_unrecognized     []byte                                 `json:"-"`
+	XXX_sizecache        int32                                  `json:"-"`
 }
 
-func (m *RoutesConfigDump) Reset()                    { *m = RoutesConfigDump{} }
-func (m *RoutesConfigDump) String() string            { return proto.CompactTextString(m) }
-func (*RoutesConfigDump) ProtoMessage()               {}
-func (*RoutesConfigDump) Descriptor() ([]byte, []int) { return fileDescriptorConfigDump, []int{4} }
+func (m *RoutesConfigDump) Reset()         { *m = RoutesConfigDump{} }
+func (m *RoutesConfigDump) String() string { return proto.CompactTextString(m) }
+func (*RoutesConfigDump) ProtoMessage()    {}
+func (*RoutesConfigDump) Descriptor() ([]byte, []int) {
+	return fileDescriptor_bd4e190b1a64d2aa, []int{4}
+}
+func (m *RoutesConfigDump) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RoutesConfigDump) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RoutesConfigDump.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RoutesConfigDump) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RoutesConfigDump.Merge(m, src)
+}
+func (m *RoutesConfigDump) XXX_Size() int {
+	return m.Size()
+}
+func (m *RoutesConfigDump) XXX_DiscardUnknown() {
+	xxx_messageInfo_RoutesConfigDump.DiscardUnknown(m)
+}
 
-func (m *RoutesConfigDump) GetStaticRouteConfigs() []RoutesConfigDump_StaticRouteConfig {
+var xxx_messageInfo_RoutesConfigDump proto.InternalMessageInfo
+
+func (m *RoutesConfigDump) GetStaticRouteConfigs() []*RoutesConfigDump_StaticRouteConfig {
 	if m != nil {
 		return m.StaticRouteConfigs
 	}
 	return nil
 }
 
-func (m *RoutesConfigDump) GetDynamicRouteConfigs() []RoutesConfigDump_DynamicRouteConfig {
+func (m *RoutesConfigDump) GetDynamicRouteConfigs() []*RoutesConfigDump_DynamicRouteConfig {
 	if m != nil {
 		return m.DynamicRouteConfigs
 	}
@@ -369,26 +645,55 @@ func (m *RoutesConfigDump) GetDynamicRouteConfigs() []RoutesConfigDump_DynamicRo
 
 type RoutesConfigDump_StaticRouteConfig struct {
 	// The route config.
-	RouteConfig *envoy_api_v24.RouteConfiguration `protobuf:"bytes,1,opt,name=route_config,json=routeConfig" json:"route_config,omitempty"`
+	RouteConfig *v21.RouteConfiguration `protobuf:"bytes,1,opt,name=route_config,json=routeConfig,proto3" json:"route_config,omitempty"`
 	// The timestamp when the Route was last updated.
-	LastUpdated *google_protobuf4.Timestamp `protobuf:"bytes,2,opt,name=last_updated,json=lastUpdated" json:"last_updated,omitempty"`
+	LastUpdated          *types.Timestamp `protobuf:"bytes,2,opt,name=last_updated,json=lastUpdated,proto3" json:"last_updated,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *RoutesConfigDump_StaticRouteConfig) Reset()         { *m = RoutesConfigDump_StaticRouteConfig{} }
 func (m *RoutesConfigDump_StaticRouteConfig) String() string { return proto.CompactTextString(m) }
 func (*RoutesConfigDump_StaticRouteConfig) ProtoMessage()    {}
 func (*RoutesConfigDump_StaticRouteConfig) Descriptor() ([]byte, []int) {
-	return fileDescriptorConfigDump, []int{4, 0}
+	return fileDescriptor_bd4e190b1a64d2aa, []int{4, 0}
+}
+func (m *RoutesConfigDump_StaticRouteConfig) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RoutesConfigDump_StaticRouteConfig) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RoutesConfigDump_StaticRouteConfig.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RoutesConfigDump_StaticRouteConfig) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RoutesConfigDump_StaticRouteConfig.Merge(m, src)
+}
+func (m *RoutesConfigDump_StaticRouteConfig) XXX_Size() int {
+	return m.Size()
+}
+func (m *RoutesConfigDump_StaticRouteConfig) XXX_DiscardUnknown() {
+	xxx_messageInfo_RoutesConfigDump_StaticRouteConfig.DiscardUnknown(m)
 }
 
-func (m *RoutesConfigDump_StaticRouteConfig) GetRouteConfig() *envoy_api_v24.RouteConfiguration {
+var xxx_messageInfo_RoutesConfigDump_StaticRouteConfig proto.InternalMessageInfo
+
+func (m *RoutesConfigDump_StaticRouteConfig) GetRouteConfig() *v21.RouteConfiguration {
 	if m != nil {
 		return m.RouteConfig
 	}
 	return nil
 }
 
-func (m *RoutesConfigDump_StaticRouteConfig) GetLastUpdated() *google_protobuf4.Timestamp {
+func (m *RoutesConfigDump_StaticRouteConfig) GetLastUpdated() *types.Timestamp {
 	if m != nil {
 		return m.LastUpdated
 	}
@@ -401,17 +706,46 @@ type RoutesConfigDump_DynamicRouteConfig struct {
 	// the route configuration was loaded.
 	VersionInfo string `protobuf:"bytes,1,opt,name=version_info,json=versionInfo,proto3" json:"version_info,omitempty"`
 	// The route config.
-	RouteConfig *envoy_api_v24.RouteConfiguration `protobuf:"bytes,2,opt,name=route_config,json=routeConfig" json:"route_config,omitempty"`
+	RouteConfig *v21.RouteConfiguration `protobuf:"bytes,2,opt,name=route_config,json=routeConfig,proto3" json:"route_config,omitempty"`
 	// The timestamp when the Route was last updated.
-	LastUpdated *google_protobuf4.Timestamp `protobuf:"bytes,3,opt,name=last_updated,json=lastUpdated" json:"last_updated,omitempty"`
+	LastUpdated          *types.Timestamp `protobuf:"bytes,3,opt,name=last_updated,json=lastUpdated,proto3" json:"last_updated,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *RoutesConfigDump_DynamicRouteConfig) Reset()         { *m = RoutesConfigDump_DynamicRouteConfig{} }
 func (m *RoutesConfigDump_DynamicRouteConfig) String() string { return proto.CompactTextString(m) }
 func (*RoutesConfigDump_DynamicRouteConfig) ProtoMessage()    {}
 func (*RoutesConfigDump_DynamicRouteConfig) Descriptor() ([]byte, []int) {
-	return fileDescriptorConfigDump, []int{4, 1}
+	return fileDescriptor_bd4e190b1a64d2aa, []int{4, 1}
 }
+func (m *RoutesConfigDump_DynamicRouteConfig) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RoutesConfigDump_DynamicRouteConfig) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RoutesConfigDump_DynamicRouteConfig.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RoutesConfigDump_DynamicRouteConfig) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RoutesConfigDump_DynamicRouteConfig.Merge(m, src)
+}
+func (m *RoutesConfigDump_DynamicRouteConfig) XXX_Size() int {
+	return m.Size()
+}
+func (m *RoutesConfigDump_DynamicRouteConfig) XXX_DiscardUnknown() {
+	xxx_messageInfo_RoutesConfigDump_DynamicRouteConfig.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RoutesConfigDump_DynamicRouteConfig proto.InternalMessageInfo
 
 func (m *RoutesConfigDump_DynamicRouteConfig) GetVersionInfo() string {
 	if m != nil {
@@ -420,16 +754,444 @@ func (m *RoutesConfigDump_DynamicRouteConfig) GetVersionInfo() string {
 	return ""
 }
 
-func (m *RoutesConfigDump_DynamicRouteConfig) GetRouteConfig() *envoy_api_v24.RouteConfiguration {
+func (m *RoutesConfigDump_DynamicRouteConfig) GetRouteConfig() *v21.RouteConfiguration {
 	if m != nil {
 		return m.RouteConfig
 	}
 	return nil
 }
 
-func (m *RoutesConfigDump_DynamicRouteConfig) GetLastUpdated() *google_protobuf4.Timestamp {
+func (m *RoutesConfigDump_DynamicRouteConfig) GetLastUpdated() *types.Timestamp {
 	if m != nil {
 		return m.LastUpdated
+	}
+	return nil
+}
+
+// Envoy's scoped RDS implementation fills this message with all currently loaded route
+// configuration scopes (defined via ScopedRouteConfigurationsSet protos). This message lists both
+// the scopes defined inline with the higher order object (i.e., the HttpConnectionManager) and the
+// dynamically obtained scopes via the SRDS API.
+type ScopedRoutesConfigDump struct {
+	// The statically loaded scoped route configs.
+	InlineScopedRouteConfigs []*ScopedRoutesConfigDump_InlineScopedRouteConfigs `protobuf:"bytes,1,rep,name=inline_scoped_route_configs,json=inlineScopedRouteConfigs,proto3" json:"inline_scoped_route_configs,omitempty"`
+	// The dynamically loaded scoped route configs.
+	DynamicScopedRouteConfigs []*ScopedRoutesConfigDump_DynamicScopedRouteConfigs `protobuf:"bytes,2,rep,name=dynamic_scoped_route_configs,json=dynamicScopedRouteConfigs,proto3" json:"dynamic_scoped_route_configs,omitempty"`
+	XXX_NoUnkeyedLiteral      struct{}                                            `json:"-"`
+	XXX_unrecognized          []byte                                              `json:"-"`
+	XXX_sizecache             int32                                               `json:"-"`
+}
+
+func (m *ScopedRoutesConfigDump) Reset()         { *m = ScopedRoutesConfigDump{} }
+func (m *ScopedRoutesConfigDump) String() string { return proto.CompactTextString(m) }
+func (*ScopedRoutesConfigDump) ProtoMessage()    {}
+func (*ScopedRoutesConfigDump) Descriptor() ([]byte, []int) {
+	return fileDescriptor_bd4e190b1a64d2aa, []int{5}
+}
+func (m *ScopedRoutesConfigDump) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ScopedRoutesConfigDump) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ScopedRoutesConfigDump.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ScopedRoutesConfigDump) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScopedRoutesConfigDump.Merge(m, src)
+}
+func (m *ScopedRoutesConfigDump) XXX_Size() int {
+	return m.Size()
+}
+func (m *ScopedRoutesConfigDump) XXX_DiscardUnknown() {
+	xxx_messageInfo_ScopedRoutesConfigDump.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ScopedRoutesConfigDump proto.InternalMessageInfo
+
+func (m *ScopedRoutesConfigDump) GetInlineScopedRouteConfigs() []*ScopedRoutesConfigDump_InlineScopedRouteConfigs {
+	if m != nil {
+		return m.InlineScopedRouteConfigs
+	}
+	return nil
+}
+
+func (m *ScopedRoutesConfigDump) GetDynamicScopedRouteConfigs() []*ScopedRoutesConfigDump_DynamicScopedRouteConfigs {
+	if m != nil {
+		return m.DynamicScopedRouteConfigs
+	}
+	return nil
+}
+
+type ScopedRoutesConfigDump_InlineScopedRouteConfigs struct {
+	// The name assigned to the scoped route configurations.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The scoped route configurations.
+	ScopedRouteConfigs []*v21.ScopedRouteConfiguration `protobuf:"bytes,2,rep,name=scoped_route_configs,json=scopedRouteConfigs,proto3" json:"scoped_route_configs,omitempty"`
+	// The timestamp when the scoped route config set was last updated.
+	LastUpdated          *types.Timestamp `protobuf:"bytes,3,opt,name=last_updated,json=lastUpdated,proto3" json:"last_updated,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
+}
+
+func (m *ScopedRoutesConfigDump_InlineScopedRouteConfigs) Reset() {
+	*m = ScopedRoutesConfigDump_InlineScopedRouteConfigs{}
+}
+func (m *ScopedRoutesConfigDump_InlineScopedRouteConfigs) String() string {
+	return proto.CompactTextString(m)
+}
+func (*ScopedRoutesConfigDump_InlineScopedRouteConfigs) ProtoMessage() {}
+func (*ScopedRoutesConfigDump_InlineScopedRouteConfigs) Descriptor() ([]byte, []int) {
+	return fileDescriptor_bd4e190b1a64d2aa, []int{5, 0}
+}
+func (m *ScopedRoutesConfigDump_InlineScopedRouteConfigs) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ScopedRoutesConfigDump_InlineScopedRouteConfigs) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ScopedRoutesConfigDump_InlineScopedRouteConfigs.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ScopedRoutesConfigDump_InlineScopedRouteConfigs) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScopedRoutesConfigDump_InlineScopedRouteConfigs.Merge(m, src)
+}
+func (m *ScopedRoutesConfigDump_InlineScopedRouteConfigs) XXX_Size() int {
+	return m.Size()
+}
+func (m *ScopedRoutesConfigDump_InlineScopedRouteConfigs) XXX_DiscardUnknown() {
+	xxx_messageInfo_ScopedRoutesConfigDump_InlineScopedRouteConfigs.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ScopedRoutesConfigDump_InlineScopedRouteConfigs proto.InternalMessageInfo
+
+func (m *ScopedRoutesConfigDump_InlineScopedRouteConfigs) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *ScopedRoutesConfigDump_InlineScopedRouteConfigs) GetScopedRouteConfigs() []*v21.ScopedRouteConfiguration {
+	if m != nil {
+		return m.ScopedRouteConfigs
+	}
+	return nil
+}
+
+func (m *ScopedRoutesConfigDump_InlineScopedRouteConfigs) GetLastUpdated() *types.Timestamp {
+	if m != nil {
+		return m.LastUpdated
+	}
+	return nil
+}
+
+type ScopedRoutesConfigDump_DynamicScopedRouteConfigs struct {
+	// The name assigned to the scoped route configurations.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// This is the per-resource version information. This version is currently taken from the
+	// :ref:`version_info <envoy_api_field_DiscoveryResponse.version_info>` field at the time that
+	// the scoped routes configuration was loaded.
+	VersionInfo string `protobuf:"bytes,2,opt,name=version_info,json=versionInfo,proto3" json:"version_info,omitempty"`
+	// The scoped route configurations.
+	ScopedRouteConfigs []*v21.ScopedRouteConfiguration `protobuf:"bytes,3,rep,name=scoped_route_configs,json=scopedRouteConfigs,proto3" json:"scoped_route_configs,omitempty"`
+	// The timestamp when the scoped route config set was last updated.
+	LastUpdated          *types.Timestamp `protobuf:"bytes,4,opt,name=last_updated,json=lastUpdated,proto3" json:"last_updated,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
+}
+
+func (m *ScopedRoutesConfigDump_DynamicScopedRouteConfigs) Reset() {
+	*m = ScopedRoutesConfigDump_DynamicScopedRouteConfigs{}
+}
+func (m *ScopedRoutesConfigDump_DynamicScopedRouteConfigs) String() string {
+	return proto.CompactTextString(m)
+}
+func (*ScopedRoutesConfigDump_DynamicScopedRouteConfigs) ProtoMessage() {}
+func (*ScopedRoutesConfigDump_DynamicScopedRouteConfigs) Descriptor() ([]byte, []int) {
+	return fileDescriptor_bd4e190b1a64d2aa, []int{5, 1}
+}
+func (m *ScopedRoutesConfigDump_DynamicScopedRouteConfigs) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ScopedRoutesConfigDump_DynamicScopedRouteConfigs) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ScopedRoutesConfigDump_DynamicScopedRouteConfigs.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ScopedRoutesConfigDump_DynamicScopedRouteConfigs) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScopedRoutesConfigDump_DynamicScopedRouteConfigs.Merge(m, src)
+}
+func (m *ScopedRoutesConfigDump_DynamicScopedRouteConfigs) XXX_Size() int {
+	return m.Size()
+}
+func (m *ScopedRoutesConfigDump_DynamicScopedRouteConfigs) XXX_DiscardUnknown() {
+	xxx_messageInfo_ScopedRoutesConfigDump_DynamicScopedRouteConfigs.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ScopedRoutesConfigDump_DynamicScopedRouteConfigs proto.InternalMessageInfo
+
+func (m *ScopedRoutesConfigDump_DynamicScopedRouteConfigs) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *ScopedRoutesConfigDump_DynamicScopedRouteConfigs) GetVersionInfo() string {
+	if m != nil {
+		return m.VersionInfo
+	}
+	return ""
+}
+
+func (m *ScopedRoutesConfigDump_DynamicScopedRouteConfigs) GetScopedRouteConfigs() []*v21.ScopedRouteConfiguration {
+	if m != nil {
+		return m.ScopedRouteConfigs
+	}
+	return nil
+}
+
+func (m *ScopedRoutesConfigDump_DynamicScopedRouteConfigs) GetLastUpdated() *types.Timestamp {
+	if m != nil {
+		return m.LastUpdated
+	}
+	return nil
+}
+
+// Envoys SDS implementation fills this message with all secrets fetched dynamically via SDS.
+type SecretsConfigDump struct {
+	// The statically loaded secrets.
+	StaticSecrets []*SecretsConfigDump_StaticSecret `protobuf:"bytes,1,rep,name=static_secrets,json=staticSecrets,proto3" json:"static_secrets,omitempty"`
+	// The dynamically loaded active secrets. These are secrets that are available to service
+	// clusters or listeners.
+	DynamicActiveSecrets []*SecretsConfigDump_DynamicSecret `protobuf:"bytes,2,rep,name=dynamic_active_secrets,json=dynamicActiveSecrets,proto3" json:"dynamic_active_secrets,omitempty"`
+	// The dynamically loaded warming secrets. These are secrets that are currently undergoing
+	// warming in preparation to service clusters or listeners.
+	DynamicWarmingSecrets []*SecretsConfigDump_DynamicSecret `protobuf:"bytes,3,rep,name=dynamic_warming_secrets,json=dynamicWarmingSecrets,proto3" json:"dynamic_warming_secrets,omitempty"`
+	XXX_NoUnkeyedLiteral  struct{}                           `json:"-"`
+	XXX_unrecognized      []byte                             `json:"-"`
+	XXX_sizecache         int32                              `json:"-"`
+}
+
+func (m *SecretsConfigDump) Reset()         { *m = SecretsConfigDump{} }
+func (m *SecretsConfigDump) String() string { return proto.CompactTextString(m) }
+func (*SecretsConfigDump) ProtoMessage()    {}
+func (*SecretsConfigDump) Descriptor() ([]byte, []int) {
+	return fileDescriptor_bd4e190b1a64d2aa, []int{6}
+}
+func (m *SecretsConfigDump) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *SecretsConfigDump) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_SecretsConfigDump.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *SecretsConfigDump) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SecretsConfigDump.Merge(m, src)
+}
+func (m *SecretsConfigDump) XXX_Size() int {
+	return m.Size()
+}
+func (m *SecretsConfigDump) XXX_DiscardUnknown() {
+	xxx_messageInfo_SecretsConfigDump.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SecretsConfigDump proto.InternalMessageInfo
+
+func (m *SecretsConfigDump) GetStaticSecrets() []*SecretsConfigDump_StaticSecret {
+	if m != nil {
+		return m.StaticSecrets
+	}
+	return nil
+}
+
+func (m *SecretsConfigDump) GetDynamicActiveSecrets() []*SecretsConfigDump_DynamicSecret {
+	if m != nil {
+		return m.DynamicActiveSecrets
+	}
+	return nil
+}
+
+func (m *SecretsConfigDump) GetDynamicWarmingSecrets() []*SecretsConfigDump_DynamicSecret {
+	if m != nil {
+		return m.DynamicWarmingSecrets
+	}
+	return nil
+}
+
+// DynamicSecret contains secret information fetched via SDS.
+type SecretsConfigDump_DynamicSecret struct {
+	// The name assigned to the secret.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// This is the per-resource version information.
+	VersionInfo string `protobuf:"bytes,2,opt,name=version_info,json=versionInfo,proto3" json:"version_info,omitempty"`
+	// The timestamp when the secret was last updated.
+	LastUpdated *types.Timestamp `protobuf:"bytes,3,opt,name=last_updated,json=lastUpdated,proto3" json:"last_updated,omitempty"`
+	// The actual secret information.
+	// Security sensitive information is redacted (replaced with "[redacted]") for
+	// private keys and passwords in TLS certificates.
+	Secret               *auth.Secret `protobuf:"bytes,4,opt,name=secret,proto3" json:"secret,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
+	XXX_unrecognized     []byte       `json:"-"`
+	XXX_sizecache        int32        `json:"-"`
+}
+
+func (m *SecretsConfigDump_DynamicSecret) Reset()         { *m = SecretsConfigDump_DynamicSecret{} }
+func (m *SecretsConfigDump_DynamicSecret) String() string { return proto.CompactTextString(m) }
+func (*SecretsConfigDump_DynamicSecret) ProtoMessage()    {}
+func (*SecretsConfigDump_DynamicSecret) Descriptor() ([]byte, []int) {
+	return fileDescriptor_bd4e190b1a64d2aa, []int{6, 0}
+}
+func (m *SecretsConfigDump_DynamicSecret) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *SecretsConfigDump_DynamicSecret) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_SecretsConfigDump_DynamicSecret.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *SecretsConfigDump_DynamicSecret) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SecretsConfigDump_DynamicSecret.Merge(m, src)
+}
+func (m *SecretsConfigDump_DynamicSecret) XXX_Size() int {
+	return m.Size()
+}
+func (m *SecretsConfigDump_DynamicSecret) XXX_DiscardUnknown() {
+	xxx_messageInfo_SecretsConfigDump_DynamicSecret.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SecretsConfigDump_DynamicSecret proto.InternalMessageInfo
+
+func (m *SecretsConfigDump_DynamicSecret) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *SecretsConfigDump_DynamicSecret) GetVersionInfo() string {
+	if m != nil {
+		return m.VersionInfo
+	}
+	return ""
+}
+
+func (m *SecretsConfigDump_DynamicSecret) GetLastUpdated() *types.Timestamp {
+	if m != nil {
+		return m.LastUpdated
+	}
+	return nil
+}
+
+func (m *SecretsConfigDump_DynamicSecret) GetSecret() *auth.Secret {
+	if m != nil {
+		return m.Secret
+	}
+	return nil
+}
+
+// StaticSecret specifies statically loaded secret in bootstrap.
+type SecretsConfigDump_StaticSecret struct {
+	// The name assigned to the secret.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The timestamp when the secret was last updated.
+	LastUpdated *types.Timestamp `protobuf:"bytes,2,opt,name=last_updated,json=lastUpdated,proto3" json:"last_updated,omitempty"`
+	// The actual secret information.
+	// Security sensitive information is redacted (replaced with "[redacted]") for
+	// private keys and passwords in TLS certificates.
+	Secret               *auth.Secret `protobuf:"bytes,3,opt,name=secret,proto3" json:"secret,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
+	XXX_unrecognized     []byte       `json:"-"`
+	XXX_sizecache        int32        `json:"-"`
+}
+
+func (m *SecretsConfigDump_StaticSecret) Reset()         { *m = SecretsConfigDump_StaticSecret{} }
+func (m *SecretsConfigDump_StaticSecret) String() string { return proto.CompactTextString(m) }
+func (*SecretsConfigDump_StaticSecret) ProtoMessage()    {}
+func (*SecretsConfigDump_StaticSecret) Descriptor() ([]byte, []int) {
+	return fileDescriptor_bd4e190b1a64d2aa, []int{6, 1}
+}
+func (m *SecretsConfigDump_StaticSecret) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *SecretsConfigDump_StaticSecret) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_SecretsConfigDump_StaticSecret.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *SecretsConfigDump_StaticSecret) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SecretsConfigDump_StaticSecret.Merge(m, src)
+}
+func (m *SecretsConfigDump_StaticSecret) XXX_Size() int {
+	return m.Size()
+}
+func (m *SecretsConfigDump_StaticSecret) XXX_DiscardUnknown() {
+	xxx_messageInfo_SecretsConfigDump_StaticSecret.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SecretsConfigDump_StaticSecret proto.InternalMessageInfo
+
+func (m *SecretsConfigDump_StaticSecret) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *SecretsConfigDump_StaticSecret) GetLastUpdated() *types.Timestamp {
+	if m != nil {
+		return m.LastUpdated
+	}
+	return nil
+}
+
+func (m *SecretsConfigDump_StaticSecret) GetSecret() *auth.Secret {
+	if m != nil {
+		return m.Secret
 	}
 	return nil
 }
@@ -446,7 +1208,85 @@ func init() {
 	proto.RegisterType((*RoutesConfigDump)(nil), "envoy.admin.v2alpha.RoutesConfigDump")
 	proto.RegisterType((*RoutesConfigDump_StaticRouteConfig)(nil), "envoy.admin.v2alpha.RoutesConfigDump.StaticRouteConfig")
 	proto.RegisterType((*RoutesConfigDump_DynamicRouteConfig)(nil), "envoy.admin.v2alpha.RoutesConfigDump.DynamicRouteConfig")
+	proto.RegisterType((*ScopedRoutesConfigDump)(nil), "envoy.admin.v2alpha.ScopedRoutesConfigDump")
+	proto.RegisterType((*ScopedRoutesConfigDump_InlineScopedRouteConfigs)(nil), "envoy.admin.v2alpha.ScopedRoutesConfigDump.InlineScopedRouteConfigs")
+	proto.RegisterType((*ScopedRoutesConfigDump_DynamicScopedRouteConfigs)(nil), "envoy.admin.v2alpha.ScopedRoutesConfigDump.DynamicScopedRouteConfigs")
+	proto.RegisterType((*SecretsConfigDump)(nil), "envoy.admin.v2alpha.SecretsConfigDump")
+	proto.RegisterType((*SecretsConfigDump_DynamicSecret)(nil), "envoy.admin.v2alpha.SecretsConfigDump.DynamicSecret")
+	proto.RegisterType((*SecretsConfigDump_StaticSecret)(nil), "envoy.admin.v2alpha.SecretsConfigDump.StaticSecret")
 }
+
+func init() {
+	proto.RegisterFile("envoy/admin/v2alpha/config_dump.proto", fileDescriptor_bd4e190b1a64d2aa)
+}
+
+var fileDescriptor_bd4e190b1a64d2aa = []byte{
+	// 1006 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x57, 0xcf, 0x6f, 0xe3, 0x44,
+	0x14, 0xd6, 0x24, 0x69, 0x97, 0x7d, 0xe9, 0x8f, 0xdd, 0x69, 0x9a, 0xa6, 0x66, 0x55, 0xba, 0x15,
+	0xa0, 0xe5, 0x62, 0x8b, 0x2c, 0xbf, 0x0e, 0x70, 0xd8, 0xb4, 0x1c, 0x56, 0xe2, 0xb0, 0x72, 0x41,
+	0x20, 0x0e, 0x44, 0xae, 0xed, 0x66, 0x07, 0x39, 0x33, 0x96, 0x67, 0x12, 0xc8, 0x89, 0xc3, 0x4a,
+	0xfc, 0x05, 0x48, 0x20, 0x71, 0x41, 0xe2, 0xc0, 0x8d, 0x33, 0x12, 0x47, 0x0e, 0x70, 0xe4, 0x3f,
+	0x00, 0xf5, 0xca, 0x3f, 0x81, 0xe2, 0x99, 0x71, 0xc6, 0x3f, 0x52, 0x25, 0x75, 0x6f, 0xf1, 0x7b,
+	0x6f, 0xbe, 0xef, 0x9b, 0x79, 0xdf, 0xf3, 0x38, 0xf0, 0x5a, 0x48, 0xa7, 0x6c, 0xe6, 0x78, 0xc1,
+	0x98, 0x50, 0x67, 0xda, 0xf7, 0xa2, 0xf8, 0xb9, 0xe7, 0xf8, 0x8c, 0x5e, 0x92, 0xd1, 0x30, 0x98,
+	0x8c, 0x63, 0x3b, 0x4e, 0x98, 0x60, 0x78, 0x2f, 0x2d, 0xb3, 0xd3, 0x32, 0x5b, 0x95, 0x59, 0x0f,
+	0xd4, 0xda, 0x98, 0x38, 0xd3, 0xbe, 0xe3, 0x4d, 0xc4, 0x73, 0xc7, 0x0f, 0x13, 0x21, 0x97, 0x58,
+	0xdd, 0x5c, 0xd6, 0x0f, 0x78, 0x65, 0x3c, 0x5a, 0x12, 0x4f, 0xb2, 0xf8, 0x41, 0x2e, 0xce, 0x17,
+	0x89, 0x37, 0x64, 0x42, 0x8a, 0x75, 0x2e, 0x18, 0x13, 0x5c, 0x24, 0x5e, 0x3c, 0xaf, 0xca, 0x1e,
+	0x54, 0xe9, 0xe1, 0x88, 0xb1, 0x51, 0x14, 0x3a, 0xe9, 0xd3, 0xc5, 0xe4, 0xd2, 0xf1, 0xe8, 0x4c,
+	0xa5, 0x5e, 0x29, 0xa6, 0x04, 0x19, 0x87, 0x5c, 0x78, 0x7a, 0xeb, 0x56, 0x67, 0xc4, 0x46, 0x2c,
+	0xfd, 0xe9, 0xcc, 0x7f, 0xc9, 0xe8, 0xc9, 0xfb, 0x00, 0xa7, 0x29, 0xf1, 0xd9, 0x64, 0x1c, 0x63,
+	0x1b, 0xee, 0x48, 0x19, 0xbc, 0x87, 0x8e, 0x9b, 0x8f, 0xda, 0xfd, 0x8e, 0x2d, 0x61, 0x6d, 0x0d,
+	0x6b, 0x3f, 0xa1, 0x33, 0x57, 0x17, 0x9d, 0xfc, 0x80, 0x60, 0x6f, 0xa0, 0x35, 0x1a, 0x38, 0x03,
+	0xb8, 0x9b, 0x49, 0xef, 0xa1, 0x63, 0xf4, 0xa8, 0xdd, 0x7f, 0xd5, 0x96, 0x47, 0x2f, 0x97, 0xda,
+	0x8b, 0x9d, 0x4d, 0xfb, 0x76, 0x06, 0xe1, 0x2e, 0x96, 0xe1, 0x0f, 0x60, 0x2b, 0xf2, 0xb8, 0x18,
+	0x4e, 0xe2, 0xc0, 0x13, 0x61, 0xd0, 0x6b, 0xa4, 0x30, 0x56, 0x49, 0xd0, 0xc7, 0x7a, 0x9f, 0x6e,
+	0x7b, 0x5e, 0xff, 0x89, 0x2c, 0x3f, 0xf9, 0x75, 0x13, 0xf6, 0x3e, 0x22, 0x5c, 0x84, 0x34, 0x4c,
+	0xb8, 0x21, 0xed, 0x21, 0x6c, 0x4d, 0xc3, 0x84, 0x13, 0x46, 0x87, 0x84, 0x5e, 0xb2, 0x54, 0xdd,
+	0x5d, 0xb7, 0xad, 0x62, 0x4f, 0xe9, 0x25, 0xc3, 0x17, 0x70, 0x8f, 0x0b, 0x4f, 0x10, 0x7f, 0x18,
+	0x69, 0x80, 0x5e, 0x23, 0x3d, 0x8e, 0x77, 0xed, 0x0a, 0xff, 0xd8, 0x15, 0x34, 0xf6, 0x79, 0x0a,
+	0xa0, 0x33, 0xee, 0x2e, 0xcf, 0x3d, 0x73, 0x9c, 0x40, 0x2f, 0x98, 0x51, 0x6f, 0x4c, 0xfc, 0xa1,
+	0xe7, 0x0b, 0x32, 0x0d, 0x0d, 0xae, 0x66, 0xca, 0xf5, 0xde, 0xca, 0x5c, 0x67, 0x12, 0x28, 0x23,
+	0xeb, 0x2a, 0xe4, 0x27, 0x29, 0xf0, 0x82, 0x53, 0xc0, 0xa1, 0xe6, 0xfc, 0xca, 0x4b, 0xc6, 0x84,
+	0x8e, 0x0c, 0xd2, 0x56, 0x4d, 0xd2, 0x03, 0x05, 0xfd, 0xa9, 0x44, 0x5e, 0xb0, 0x4e, 0xc1, 0xd2,
+	0xac, 0x41, 0xe2, 0x11, 0x9a, 0xa7, 0xdd, 0xa8, 0x49, 0xab, 0x4f, 0xf1, 0x4c, 0x41, 0x67, 0x6b,
+	0xac, 0x17, 0x08, 0x76, 0xf2, 0x5d, 0xc0, 0x7d, 0x78, 0x49, 0x33, 0x2b, 0x57, 0x76, 0x35, 0x71,
+	0x4c, 0xe6, 0x46, 0xcc, 0x60, 0xb3, 0xba, 0x9a, 0x36, 0xb4, 0x7e, 0x41, 0xb0, 0x5b, 0xd0, 0xbc,
+	0x8a, 0x05, 0x4d, 0xa5, 0x8d, 0x1b, 0x2a, 0x6d, 0xae, 0x37, 0x30, 0x3f, 0x6d, 0x00, 0x3e, 0x8d,
+	0x26, 0x5c, 0xac, 0x3d, 0x2f, 0x5f, 0x80, 0xb2, 0xf7, 0xd0, 0x57, 0xeb, 0xd5, 0xb8, 0xbc, 0x5d,
+	0xd9, 0xd6, 0x32, 0x89, 0x9a, 0x16, 0x95, 0x70, 0x77, 0xb8, 0xf9, 0xc8, 0x31, 0x85, 0x83, 0xc2,
+	0xac, 0x64, 0x3c, 0x72, 0x54, 0xde, 0x59, 0x95, 0x47, 0x75, 0x42, 0x13, 0xed, 0xe7, 0x06, 0x25,
+	0xe3, 0x8b, 0x17, 0xb3, 0xa9, 0xe7, 0x24, 0x23, 0x6c, 0xd5, 0x22, 0xec, 0xe6, 0x87, 0x44, 0x2f,
+	0xb0, 0xbe, 0x81, 0xed, 0xdc, 0x11, 0x60, 0x07, 0xee, 0x28, 0x4a, 0x65, 0xd4, 0xfd, 0x7c, 0xfb,
+	0x35, 0xa0, 0xae, 0xaa, 0x6b, 0xd3, 0x9f, 0x11, 0xec, 0xe4, 0xb5, 0xae, 0xd2, 0x78, 0x43, 0x65,
+	0xe3, 0x46, 0x2a, 0xd7, 0xb4, 0xe8, 0x1f, 0x2d, 0xb8, 0xe7, 0xb2, 0x89, 0x08, 0x4d, 0x83, 0x12,
+	0xe8, 0x28, 0xf7, 0x25, 0xf3, 0xd4, 0x50, 0x5f, 0x60, 0xd7, 0xbd, 0xb1, 0x8b, 0x20, 0xca, 0x80,
+	0x69, 0x58, 0x46, 0x5d, 0xcc, 0x8b, 0x21, 0x8e, 0x23, 0xd0, 0x8e, 0x29, 0x70, 0x5d, 0xf7, 0xc6,
+	0x2e, 0x71, 0xa9, 0x73, 0x36, 0xc9, 0xf6, 0x82, 0x52, 0x8c, 0x5b, 0xdf, 0x23, 0xb8, 0x5f, 0xd2,
+	0x85, 0x4f, 0x61, 0xcb, 0xe4, 0x56, 0xf6, 0x38, 0xce, 0x1f, 0xbc, 0xb1, 0x60, 0x92, 0x78, 0x82,
+	0x30, 0xea, 0xb6, 0x13, 0x03, 0xa4, 0xa6, 0x5b, 0x7e, 0x47, 0x80, 0xcb, 0xbb, 0x58, 0xc5, 0x31,
+	0x45, 0xf5, 0x8d, 0xdb, 0x50, 0xbf, 0xa6, 0x8b, 0xfe, 0xd9, 0x80, 0xee, 0xb9, 0xcf, 0xe2, 0x30,
+	0x28, 0x79, 0xe9, 0x05, 0x82, 0x97, 0x09, 0x8d, 0x08, 0x0d, 0x87, 0x3c, 0xad, 0x28, 0xf4, 0x59,
+	0x7e, 0x14, 0x9d, 0x55, 0xf6, 0xb9, 0x1a, 0xd2, 0x7e, 0x9a, 0xc2, 0x19, 0x49, 0xd5, 0x5e, 0xb7,
+	0x47, 0x96, 0x64, 0xf0, 0xb7, 0x08, 0x1e, 0x68, 0x9f, 0x55, 0xca, 0x90, 0xd6, 0xfe, 0x70, 0x1d,
+	0x19, 0xaa, 0x5d, 0x15, 0x3a, 0xf4, 0x37, 0x41, 0x39, 0x65, 0xfd, 0x89, 0xa0, 0xb7, 0x4c, 0x3f,
+	0xc6, 0xd0, 0xa2, 0xde, 0x38, 0x54, 0x5d, 0x4e, 0x7f, 0xe3, 0xcf, 0xa0, 0x73, 0x8d, 0xe0, 0xd7,
+	0xf3, 0x6d, 0x2e, 0x61, 0xea, 0x66, 0x63, 0x5e, 0x66, 0xab, 0xd7, 0x73, 0xeb, 0x3f, 0x04, 0x87,
+	0x4b, 0x8f, 0xa0, 0x72, 0x2b, 0x45, 0x33, 0x37, 0xca, 0x66, 0x5e, 0xb6, 0xdb, 0xe6, 0xad, 0xef,
+	0xb6, 0xb5, 0x9e, 0xc3, 0x7f, 0xdc, 0x80, 0xfb, 0xe7, 0xa1, 0x9f, 0x84, 0xc2, 0x34, 0xf7, 0xe7,
+	0xa0, 0x2e, 0xd6, 0x21, 0x97, 0x39, 0x65, 0xe7, 0xc7, 0xd5, 0x3e, 0x2a, 0xae, 0x57, 0xef, 0x48,
+	0x19, 0x77, 0xb7, 0xb9, 0xf1, 0xc4, 0xf1, 0x97, 0xd0, 0x2d, 0x5c, 0xd1, 0x9a, 0x43, 0xb6, 0xfe,
+	0xad, 0x15, 0x39, 0x74, 0x8f, 0x24, 0x49, 0x27, 0x77, 0x3f, 0x6b, 0xae, 0x68, 0xf1, 0x39, 0xa0,
+	0xaf, 0x67, 0x4d, 0xd6, 0xac, 0x41, 0xb6, 0x9f, 0xbf, 0x9b, 0x55, 0xb9, 0xf5, 0x1b, 0x82, 0xed,
+	0x5c, 0xe1, 0x4d, 0xdd, 0x52, 0xcf, 0xc1, 0xf8, 0x4d, 0xd8, 0x94, 0xbb, 0x54, 0x66, 0x38, 0xcc,
+	0xdb, 0x6b, 0xfe, 0xaf, 0x55, 0x6d, 0xd1, 0x55, 0x85, 0xd6, 0x77, 0x08, 0xb6, 0xcc, 0xa6, 0x55,
+	0x2a, 0xaf, 0x77, 0x15, 0x18, 0xb2, 0x9a, 0x2b, 0xca, 0x1a, 0x0c, 0xfe, 0xba, 0x3a, 0x42, 0x7f,
+	0x5f, 0x1d, 0xa1, 0x7f, 0xaf, 0x8e, 0x10, 0x3c, 0x24, 0x4c, 0x2e, 0x89, 0x13, 0xf6, 0xf5, 0xac,
+	0xaa, 0x73, 0x83, 0xdd, 0x45, 0xcf, 0x9e, 0xcd, 0xe5, 0x3c, 0x43, 0x17, 0x9b, 0xa9, 0xae, 0xc7,
+	0xff, 0x07, 0x00, 0x00, 0xff, 0xff, 0xe7, 0x8f, 0xb1, 0x73, 0xf7, 0x0f, 0x00, 0x00,
+}
+
 func (m *ConfigDump) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -463,30 +1303,19 @@ func (m *ConfigDump) MarshalTo(dAtA []byte) (int, error) {
 	var l int
 	_ = l
 	if len(m.Configs) > 0 {
-		for k, _ := range m.Configs {
+		for _, msg := range m.Configs {
 			dAtA[i] = 0xa
 			i++
-			v := m.Configs[k]
-			msgSize := 0
-			if (&v) != nil {
-				msgSize = (&v).Size()
-				msgSize += 1 + sovConfigDump(uint64(msgSize))
-			}
-			mapSize := 1 + len(k) + sovConfigDump(uint64(len(k))) + msgSize
-			i = encodeVarintConfigDump(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0xa
-			i++
-			i = encodeVarintConfigDump(dAtA, i, uint64(len(k)))
-			i += copy(dAtA[i:], k)
-			dAtA[i] = 0x12
-			i++
-			i = encodeVarintConfigDump(dAtA, i, uint64((&v).Size()))
-			n1, err := (&v).MarshalTo(dAtA[i:])
+			i = encodeVarintConfigDump(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
-			i += n1
+			i += n
 		}
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -506,23 +1335,28 @@ func (m *BootstrapConfigDump) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	dAtA[i] = 0xa
-	i++
-	i = encodeVarintConfigDump(dAtA, i, uint64(m.Bootstrap.Size()))
-	n2, err := m.Bootstrap.MarshalTo(dAtA[i:])
-	if err != nil {
-		return 0, err
+	if m.Bootstrap != nil {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintConfigDump(dAtA, i, uint64(m.Bootstrap.Size()))
+		n1, err := m.Bootstrap.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n1
 	}
-	i += n2
 	if m.LastUpdated != nil {
 		dAtA[i] = 0x12
 		i++
 		i = encodeVarintConfigDump(dAtA, i, uint64(m.LastUpdated.Size()))
-		n3, err := m.LastUpdated.MarshalTo(dAtA[i:])
+		n2, err := m.LastUpdated.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n3
+		i += n2
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -596,6 +1430,9 @@ func (m *ListenersConfigDump) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -618,21 +1455,24 @@ func (m *ListenersConfigDump_StaticListener) MarshalTo(dAtA []byte) (int, error)
 		dAtA[i] = 0xa
 		i++
 		i = encodeVarintConfigDump(dAtA, i, uint64(m.Listener.Size()))
-		n4, err := m.Listener.MarshalTo(dAtA[i:])
+		n3, err := m.Listener.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n4
+		i += n3
 	}
 	if m.LastUpdated != nil {
 		dAtA[i] = 0x12
 		i++
 		i = encodeVarintConfigDump(dAtA, i, uint64(m.LastUpdated.Size()))
-		n5, err := m.LastUpdated.MarshalTo(dAtA[i:])
+		n4, err := m.LastUpdated.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n5
+		i += n4
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -662,21 +1502,24 @@ func (m *ListenersConfigDump_DynamicListener) MarshalTo(dAtA []byte) (int, error
 		dAtA[i] = 0x12
 		i++
 		i = encodeVarintConfigDump(dAtA, i, uint64(m.Listener.Size()))
-		n6, err := m.Listener.MarshalTo(dAtA[i:])
+		n5, err := m.Listener.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n6
+		i += n5
 	}
 	if m.LastUpdated != nil {
 		dAtA[i] = 0x1a
 		i++
 		i = encodeVarintConfigDump(dAtA, i, uint64(m.LastUpdated.Size()))
-		n7, err := m.LastUpdated.MarshalTo(dAtA[i:])
+		n6, err := m.LastUpdated.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n7
+		i += n6
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -738,6 +1581,9 @@ func (m *ClustersConfigDump) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -760,21 +1606,24 @@ func (m *ClustersConfigDump_StaticCluster) MarshalTo(dAtA []byte) (int, error) {
 		dAtA[i] = 0xa
 		i++
 		i = encodeVarintConfigDump(dAtA, i, uint64(m.Cluster.Size()))
-		n8, err := m.Cluster.MarshalTo(dAtA[i:])
+		n7, err := m.Cluster.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n8
+		i += n7
 	}
 	if m.LastUpdated != nil {
 		dAtA[i] = 0x12
 		i++
 		i = encodeVarintConfigDump(dAtA, i, uint64(m.LastUpdated.Size()))
-		n9, err := m.LastUpdated.MarshalTo(dAtA[i:])
+		n8, err := m.LastUpdated.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n9
+		i += n8
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -804,21 +1653,24 @@ func (m *ClustersConfigDump_DynamicCluster) MarshalTo(dAtA []byte) (int, error) 
 		dAtA[i] = 0x12
 		i++
 		i = encodeVarintConfigDump(dAtA, i, uint64(m.Cluster.Size()))
-		n10, err := m.Cluster.MarshalTo(dAtA[i:])
+		n9, err := m.Cluster.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n10
+		i += n9
 	}
 	if m.LastUpdated != nil {
 		dAtA[i] = 0x1a
 		i++
 		i = encodeVarintConfigDump(dAtA, i, uint64(m.LastUpdated.Size()))
-		n11, err := m.LastUpdated.MarshalTo(dAtA[i:])
+		n10, err := m.LastUpdated.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n11
+		i += n10
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -862,6 +1714,9 @@ func (m *RoutesConfigDump) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -884,21 +1739,24 @@ func (m *RoutesConfigDump_StaticRouteConfig) MarshalTo(dAtA []byte) (int, error)
 		dAtA[i] = 0xa
 		i++
 		i = encodeVarintConfigDump(dAtA, i, uint64(m.RouteConfig.Size()))
-		n12, err := m.RouteConfig.MarshalTo(dAtA[i:])
+		n11, err := m.RouteConfig.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n12
+		i += n11
 	}
 	if m.LastUpdated != nil {
 		dAtA[i] = 0x12
 		i++
 		i = encodeVarintConfigDump(dAtA, i, uint64(m.LastUpdated.Size()))
-		n13, err := m.LastUpdated.MarshalTo(dAtA[i:])
+		n12, err := m.LastUpdated.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n13
+		i += n12
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -928,11 +1786,105 @@ func (m *RoutesConfigDump_DynamicRouteConfig) MarshalTo(dAtA []byte) (int, error
 		dAtA[i] = 0x12
 		i++
 		i = encodeVarintConfigDump(dAtA, i, uint64(m.RouteConfig.Size()))
-		n14, err := m.RouteConfig.MarshalTo(dAtA[i:])
+		n13, err := m.RouteConfig.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n13
+	}
+	if m.LastUpdated != nil {
+		dAtA[i] = 0x1a
+		i++
+		i = encodeVarintConfigDump(dAtA, i, uint64(m.LastUpdated.Size()))
+		n14, err := m.LastUpdated.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n14
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	return i, nil
+}
+
+func (m *ScopedRoutesConfigDump) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ScopedRoutesConfigDump) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.InlineScopedRouteConfigs) > 0 {
+		for _, msg := range m.InlineScopedRouteConfigs {
+			dAtA[i] = 0xa
+			i++
+			i = encodeVarintConfigDump(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	if len(m.DynamicScopedRouteConfigs) > 0 {
+		for _, msg := range m.DynamicScopedRouteConfigs {
+			dAtA[i] = 0x12
+			i++
+			i = encodeVarintConfigDump(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	return i, nil
+}
+
+func (m *ScopedRoutesConfigDump_InlineScopedRouteConfigs) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ScopedRoutesConfigDump_InlineScopedRouteConfigs) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Name) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintConfigDump(dAtA, i, uint64(len(m.Name)))
+		i += copy(dAtA[i:], m.Name)
+	}
+	if len(m.ScopedRouteConfigs) > 0 {
+		for _, msg := range m.ScopedRouteConfigs {
+			dAtA[i] = 0x12
+			i++
+			i = encodeVarintConfigDump(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
 	}
 	if m.LastUpdated != nil {
 		dAtA[i] = 0x1a
@@ -943,6 +1895,221 @@ func (m *RoutesConfigDump_DynamicRouteConfig) MarshalTo(dAtA []byte) (int, error
 			return 0, err
 		}
 		i += n15
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	return i, nil
+}
+
+func (m *ScopedRoutesConfigDump_DynamicScopedRouteConfigs) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ScopedRoutesConfigDump_DynamicScopedRouteConfigs) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Name) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintConfigDump(dAtA, i, uint64(len(m.Name)))
+		i += copy(dAtA[i:], m.Name)
+	}
+	if len(m.VersionInfo) > 0 {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintConfigDump(dAtA, i, uint64(len(m.VersionInfo)))
+		i += copy(dAtA[i:], m.VersionInfo)
+	}
+	if len(m.ScopedRouteConfigs) > 0 {
+		for _, msg := range m.ScopedRouteConfigs {
+			dAtA[i] = 0x1a
+			i++
+			i = encodeVarintConfigDump(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	if m.LastUpdated != nil {
+		dAtA[i] = 0x22
+		i++
+		i = encodeVarintConfigDump(dAtA, i, uint64(m.LastUpdated.Size()))
+		n16, err := m.LastUpdated.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n16
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	return i, nil
+}
+
+func (m *SecretsConfigDump) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *SecretsConfigDump) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.StaticSecrets) > 0 {
+		for _, msg := range m.StaticSecrets {
+			dAtA[i] = 0xa
+			i++
+			i = encodeVarintConfigDump(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	if len(m.DynamicActiveSecrets) > 0 {
+		for _, msg := range m.DynamicActiveSecrets {
+			dAtA[i] = 0x12
+			i++
+			i = encodeVarintConfigDump(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	if len(m.DynamicWarmingSecrets) > 0 {
+		for _, msg := range m.DynamicWarmingSecrets {
+			dAtA[i] = 0x1a
+			i++
+			i = encodeVarintConfigDump(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	return i, nil
+}
+
+func (m *SecretsConfigDump_DynamicSecret) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *SecretsConfigDump_DynamicSecret) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Name) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintConfigDump(dAtA, i, uint64(len(m.Name)))
+		i += copy(dAtA[i:], m.Name)
+	}
+	if len(m.VersionInfo) > 0 {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintConfigDump(dAtA, i, uint64(len(m.VersionInfo)))
+		i += copy(dAtA[i:], m.VersionInfo)
+	}
+	if m.LastUpdated != nil {
+		dAtA[i] = 0x1a
+		i++
+		i = encodeVarintConfigDump(dAtA, i, uint64(m.LastUpdated.Size()))
+		n17, err := m.LastUpdated.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n17
+	}
+	if m.Secret != nil {
+		dAtA[i] = 0x22
+		i++
+		i = encodeVarintConfigDump(dAtA, i, uint64(m.Secret.Size()))
+		n18, err := m.Secret.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n18
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	return i, nil
+}
+
+func (m *SecretsConfigDump_StaticSecret) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *SecretsConfigDump_StaticSecret) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Name) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintConfigDump(dAtA, i, uint64(len(m.Name)))
+		i += copy(dAtA[i:], m.Name)
+	}
+	if m.LastUpdated != nil {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintConfigDump(dAtA, i, uint64(m.LastUpdated.Size()))
+		n19, err := m.LastUpdated.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n19
+	}
+	if m.Secret != nil {
+		dAtA[i] = 0x1a
+		i++
+		i = encodeVarintConfigDump(dAtA, i, uint64(m.Secret.Size()))
+		n20, err := m.Secret.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n20
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -957,33 +2124,47 @@ func encodeVarintConfigDump(dAtA []byte, offset int, v uint64) int {
 	return offset + 1
 }
 func (m *ConfigDump) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if len(m.Configs) > 0 {
-		for k, v := range m.Configs {
-			_ = k
-			_ = v
-			l = v.Size()
-			mapEntrySize := 1 + len(k) + sovConfigDump(uint64(len(k))) + 1 + l + sovConfigDump(uint64(l))
-			n += mapEntrySize + 1 + sovConfigDump(uint64(mapEntrySize))
+		for _, e := range m.Configs {
+			l = e.Size()
+			n += 1 + l + sovConfigDump(uint64(l))
 		}
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
 
 func (m *BootstrapConfigDump) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
-	l = m.Bootstrap.Size()
-	n += 1 + l + sovConfigDump(uint64(l))
+	if m.Bootstrap != nil {
+		l = m.Bootstrap.Size()
+		n += 1 + l + sovConfigDump(uint64(l))
+	}
 	if m.LastUpdated != nil {
 		l = m.LastUpdated.Size()
 		n += 1 + l + sovConfigDump(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
 
 func (m *ListenersConfigDump) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	l = len(m.VersionInfo)
@@ -1014,10 +2195,16 @@ func (m *ListenersConfigDump) Size() (n int) {
 			n += 1 + l + sovConfigDump(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *ListenersConfigDump_StaticListener) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.Listener != nil {
@@ -1028,10 +2215,16 @@ func (m *ListenersConfigDump_StaticListener) Size() (n int) {
 		l = m.LastUpdated.Size()
 		n += 1 + l + sovConfigDump(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *ListenersConfigDump_DynamicListener) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	l = len(m.VersionInfo)
@@ -1046,10 +2239,16 @@ func (m *ListenersConfigDump_DynamicListener) Size() (n int) {
 		l = m.LastUpdated.Size()
 		n += 1 + l + sovConfigDump(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *ClustersConfigDump) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	l = len(m.VersionInfo)
@@ -1074,10 +2273,16 @@ func (m *ClustersConfigDump) Size() (n int) {
 			n += 1 + l + sovConfigDump(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *ClustersConfigDump_StaticCluster) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.Cluster != nil {
@@ -1088,10 +2293,16 @@ func (m *ClustersConfigDump_StaticCluster) Size() (n int) {
 		l = m.LastUpdated.Size()
 		n += 1 + l + sovConfigDump(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *ClustersConfigDump_DynamicCluster) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	l = len(m.VersionInfo)
@@ -1106,10 +2317,16 @@ func (m *ClustersConfigDump_DynamicCluster) Size() (n int) {
 		l = m.LastUpdated.Size()
 		n += 1 + l + sovConfigDump(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *RoutesConfigDump) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if len(m.StaticRouteConfigs) > 0 {
@@ -1124,10 +2341,16 @@ func (m *RoutesConfigDump) Size() (n int) {
 			n += 1 + l + sovConfigDump(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *RoutesConfigDump_StaticRouteConfig) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	if m.RouteConfig != nil {
@@ -1138,10 +2361,16 @@ func (m *RoutesConfigDump_StaticRouteConfig) Size() (n int) {
 		l = m.LastUpdated.Size()
 		n += 1 + l + sovConfigDump(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *RoutesConfigDump_DynamicRouteConfig) Size() (n int) {
+	if m == nil {
+		return 0
+	}
 	var l int
 	_ = l
 	l = len(m.VersionInfo)
@@ -1155,6 +2384,171 @@ func (m *RoutesConfigDump_DynamicRouteConfig) Size() (n int) {
 	if m.LastUpdated != nil {
 		l = m.LastUpdated.Size()
 		n += 1 + l + sovConfigDump(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
+	return n
+}
+
+func (m *ScopedRoutesConfigDump) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.InlineScopedRouteConfigs) > 0 {
+		for _, e := range m.InlineScopedRouteConfigs {
+			l = e.Size()
+			n += 1 + l + sovConfigDump(uint64(l))
+		}
+	}
+	if len(m.DynamicScopedRouteConfigs) > 0 {
+		for _, e := range m.DynamicScopedRouteConfigs {
+			l = e.Size()
+			n += 1 + l + sovConfigDump(uint64(l))
+		}
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
+	return n
+}
+
+func (m *ScopedRoutesConfigDump_InlineScopedRouteConfigs) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Name)
+	if l > 0 {
+		n += 1 + l + sovConfigDump(uint64(l))
+	}
+	if len(m.ScopedRouteConfigs) > 0 {
+		for _, e := range m.ScopedRouteConfigs {
+			l = e.Size()
+			n += 1 + l + sovConfigDump(uint64(l))
+		}
+	}
+	if m.LastUpdated != nil {
+		l = m.LastUpdated.Size()
+		n += 1 + l + sovConfigDump(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
+	return n
+}
+
+func (m *ScopedRoutesConfigDump_DynamicScopedRouteConfigs) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Name)
+	if l > 0 {
+		n += 1 + l + sovConfigDump(uint64(l))
+	}
+	l = len(m.VersionInfo)
+	if l > 0 {
+		n += 1 + l + sovConfigDump(uint64(l))
+	}
+	if len(m.ScopedRouteConfigs) > 0 {
+		for _, e := range m.ScopedRouteConfigs {
+			l = e.Size()
+			n += 1 + l + sovConfigDump(uint64(l))
+		}
+	}
+	if m.LastUpdated != nil {
+		l = m.LastUpdated.Size()
+		n += 1 + l + sovConfigDump(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
+	return n
+}
+
+func (m *SecretsConfigDump) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.StaticSecrets) > 0 {
+		for _, e := range m.StaticSecrets {
+			l = e.Size()
+			n += 1 + l + sovConfigDump(uint64(l))
+		}
+	}
+	if len(m.DynamicActiveSecrets) > 0 {
+		for _, e := range m.DynamicActiveSecrets {
+			l = e.Size()
+			n += 1 + l + sovConfigDump(uint64(l))
+		}
+	}
+	if len(m.DynamicWarmingSecrets) > 0 {
+		for _, e := range m.DynamicWarmingSecrets {
+			l = e.Size()
+			n += 1 + l + sovConfigDump(uint64(l))
+		}
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
+	return n
+}
+
+func (m *SecretsConfigDump_DynamicSecret) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Name)
+	if l > 0 {
+		n += 1 + l + sovConfigDump(uint64(l))
+	}
+	l = len(m.VersionInfo)
+	if l > 0 {
+		n += 1 + l + sovConfigDump(uint64(l))
+	}
+	if m.LastUpdated != nil {
+		l = m.LastUpdated.Size()
+		n += 1 + l + sovConfigDump(uint64(l))
+	}
+	if m.Secret != nil {
+		l = m.Secret.Size()
+		n += 1 + l + sovConfigDump(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
+	return n
+}
+
+func (m *SecretsConfigDump_StaticSecret) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Name)
+	if l > 0 {
+		n += 1 + l + sovConfigDump(uint64(l))
+	}
+	if m.LastUpdated != nil {
+		l = m.LastUpdated.Size()
+		n += 1 + l + sovConfigDump(uint64(l))
+	}
+	if m.Secret != nil {
+		l = m.Secret.Size()
+		n += 1 + l + sovConfigDump(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -1187,7 +2581,7 @@ func (m *ConfigDump) Unmarshal(dAtA []byte) error {
 			}
 			b := dAtA[iNdEx]
 			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
+			wire |= uint64(b&0x7F) << shift
 			if b < 0x80 {
 				break
 			}
@@ -1215,7 +2609,7 @@ func (m *ConfigDump) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1224,105 +2618,16 @@ func (m *ConfigDump) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Configs == nil {
-				m.Configs = make(map[string]google_protobuf6.Any)
+			m.Configs = append(m.Configs, &types.Any{})
+			if err := m.Configs[len(m.Configs)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
-			var mapkey string
-			mapvalue := &google_protobuf6.Any{}
-			for iNdEx < postIndex {
-				entryPreIndex := iNdEx
-				var wire uint64
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowConfigDump
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					wire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				fieldNum := int32(wire >> 3)
-				if fieldNum == 1 {
-					var stringLenmapkey uint64
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowConfigDump
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						stringLenmapkey |= (uint64(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-					intStringLenmapkey := int(stringLenmapkey)
-					if intStringLenmapkey < 0 {
-						return ErrInvalidLengthConfigDump
-					}
-					postStringIndexmapkey := iNdEx + intStringLenmapkey
-					if postStringIndexmapkey > l {
-						return io.ErrUnexpectedEOF
-					}
-					mapkey = string(dAtA[iNdEx:postStringIndexmapkey])
-					iNdEx = postStringIndexmapkey
-				} else if fieldNum == 2 {
-					var mapmsglen int
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowConfigDump
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapmsglen |= (int(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-					if mapmsglen < 0 {
-						return ErrInvalidLengthConfigDump
-					}
-					postmsgIndex := iNdEx + mapmsglen
-					if mapmsglen < 0 {
-						return ErrInvalidLengthConfigDump
-					}
-					if postmsgIndex > l {
-						return io.ErrUnexpectedEOF
-					}
-					mapvalue = &google_protobuf6.Any{}
-					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
-						return err
-					}
-					iNdEx = postmsgIndex
-				} else {
-					iNdEx = entryPreIndex
-					skippy, err := skipConfigDump(dAtA[iNdEx:])
-					if err != nil {
-						return err
-					}
-					if skippy < 0 {
-						return ErrInvalidLengthConfigDump
-					}
-					if (iNdEx + skippy) > postIndex {
-						return io.ErrUnexpectedEOF
-					}
-					iNdEx += skippy
-				}
-			}
-			m.Configs[mapkey] = *mapvalue
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -1333,9 +2638,13 @@ func (m *ConfigDump) Unmarshal(dAtA []byte) error {
 			if skippy < 0 {
 				return ErrInvalidLengthConfigDump
 			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -1360,7 +2669,7 @@ func (m *BootstrapConfigDump) Unmarshal(dAtA []byte) error {
 			}
 			b := dAtA[iNdEx]
 			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
+			wire |= uint64(b&0x7F) << shift
 			if b < 0x80 {
 				break
 			}
@@ -1388,7 +2697,7 @@ func (m *BootstrapConfigDump) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1397,8 +2706,14 @@ func (m *BootstrapConfigDump) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
+			}
+			if m.Bootstrap == nil {
+				m.Bootstrap = &v2.Bootstrap{}
 			}
 			if err := m.Bootstrap.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -1418,7 +2733,7 @@ func (m *BootstrapConfigDump) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1427,11 +2742,14 @@ func (m *BootstrapConfigDump) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
 			if m.LastUpdated == nil {
-				m.LastUpdated = &google_protobuf4.Timestamp{}
+				m.LastUpdated = &types.Timestamp{}
 			}
 			if err := m.LastUpdated.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -1446,9 +2764,13 @@ func (m *BootstrapConfigDump) Unmarshal(dAtA []byte) error {
 			if skippy < 0 {
 				return ErrInvalidLengthConfigDump
 			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -1473,7 +2795,7 @@ func (m *ListenersConfigDump) Unmarshal(dAtA []byte) error {
 			}
 			b := dAtA[iNdEx]
 			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
+			wire |= uint64(b&0x7F) << shift
 			if b < 0x80 {
 				break
 			}
@@ -1501,7 +2823,7 @@ func (m *ListenersConfigDump) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
+				stringLen |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1511,6 +2833,9 @@ func (m *ListenersConfigDump) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -1530,7 +2855,7 @@ func (m *ListenersConfigDump) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1539,10 +2864,13 @@ func (m *ListenersConfigDump) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.StaticListeners = append(m.StaticListeners, ListenersConfigDump_StaticListener{})
+			m.StaticListeners = append(m.StaticListeners, &ListenersConfigDump_StaticListener{})
 			if err := m.StaticListeners[len(m.StaticListeners)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -1561,7 +2889,7 @@ func (m *ListenersConfigDump) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1570,10 +2898,13 @@ func (m *ListenersConfigDump) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.DynamicActiveListeners = append(m.DynamicActiveListeners, ListenersConfigDump_DynamicListener{})
+			m.DynamicActiveListeners = append(m.DynamicActiveListeners, &ListenersConfigDump_DynamicListener{})
 			if err := m.DynamicActiveListeners[len(m.DynamicActiveListeners)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -1592,7 +2923,7 @@ func (m *ListenersConfigDump) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1601,10 +2932,13 @@ func (m *ListenersConfigDump) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.DynamicWarmingListeners = append(m.DynamicWarmingListeners, ListenersConfigDump_DynamicListener{})
+			m.DynamicWarmingListeners = append(m.DynamicWarmingListeners, &ListenersConfigDump_DynamicListener{})
 			if err := m.DynamicWarmingListeners[len(m.DynamicWarmingListeners)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -1623,7 +2957,7 @@ func (m *ListenersConfigDump) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1632,10 +2966,13 @@ func (m *ListenersConfigDump) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.DynamicDrainingListeners = append(m.DynamicDrainingListeners, ListenersConfigDump_DynamicListener{})
+			m.DynamicDrainingListeners = append(m.DynamicDrainingListeners, &ListenersConfigDump_DynamicListener{})
 			if err := m.DynamicDrainingListeners[len(m.DynamicDrainingListeners)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -1649,9 +2986,13 @@ func (m *ListenersConfigDump) Unmarshal(dAtA []byte) error {
 			if skippy < 0 {
 				return ErrInvalidLengthConfigDump
 			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -1676,7 +3017,7 @@ func (m *ListenersConfigDump_StaticListener) Unmarshal(dAtA []byte) error {
 			}
 			b := dAtA[iNdEx]
 			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
+			wire |= uint64(b&0x7F) << shift
 			if b < 0x80 {
 				break
 			}
@@ -1704,7 +3045,7 @@ func (m *ListenersConfigDump_StaticListener) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1713,11 +3054,14 @@ func (m *ListenersConfigDump_StaticListener) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Listener == nil {
-				m.Listener = &envoy_api_v23.Listener{}
+				m.Listener = &v21.Listener{}
 			}
 			if err := m.Listener.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -1737,7 +3081,7 @@ func (m *ListenersConfigDump_StaticListener) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1746,11 +3090,14 @@ func (m *ListenersConfigDump_StaticListener) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
 			if m.LastUpdated == nil {
-				m.LastUpdated = &google_protobuf4.Timestamp{}
+				m.LastUpdated = &types.Timestamp{}
 			}
 			if err := m.LastUpdated.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -1765,9 +3112,13 @@ func (m *ListenersConfigDump_StaticListener) Unmarshal(dAtA []byte) error {
 			if skippy < 0 {
 				return ErrInvalidLengthConfigDump
 			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -1792,7 +3143,7 @@ func (m *ListenersConfigDump_DynamicListener) Unmarshal(dAtA []byte) error {
 			}
 			b := dAtA[iNdEx]
 			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
+			wire |= uint64(b&0x7F) << shift
 			if b < 0x80 {
 				break
 			}
@@ -1820,7 +3171,7 @@ func (m *ListenersConfigDump_DynamicListener) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
+				stringLen |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1830,6 +3181,9 @@ func (m *ListenersConfigDump_DynamicListener) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -1849,7 +3203,7 @@ func (m *ListenersConfigDump_DynamicListener) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1858,11 +3212,14 @@ func (m *ListenersConfigDump_DynamicListener) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Listener == nil {
-				m.Listener = &envoy_api_v23.Listener{}
+				m.Listener = &v21.Listener{}
 			}
 			if err := m.Listener.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -1882,7 +3239,7 @@ func (m *ListenersConfigDump_DynamicListener) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1891,11 +3248,14 @@ func (m *ListenersConfigDump_DynamicListener) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
 			if m.LastUpdated == nil {
-				m.LastUpdated = &google_protobuf4.Timestamp{}
+				m.LastUpdated = &types.Timestamp{}
 			}
 			if err := m.LastUpdated.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -1910,9 +3270,13 @@ func (m *ListenersConfigDump_DynamicListener) Unmarshal(dAtA []byte) error {
 			if skippy < 0 {
 				return ErrInvalidLengthConfigDump
 			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -1937,7 +3301,7 @@ func (m *ClustersConfigDump) Unmarshal(dAtA []byte) error {
 			}
 			b := dAtA[iNdEx]
 			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
+			wire |= uint64(b&0x7F) << shift
 			if b < 0x80 {
 				break
 			}
@@ -1965,7 +3329,7 @@ func (m *ClustersConfigDump) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
+				stringLen |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1975,6 +3339,9 @@ func (m *ClustersConfigDump) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -1994,7 +3361,7 @@ func (m *ClustersConfigDump) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -2003,10 +3370,13 @@ func (m *ClustersConfigDump) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.StaticClusters = append(m.StaticClusters, ClustersConfigDump_StaticCluster{})
+			m.StaticClusters = append(m.StaticClusters, &ClustersConfigDump_StaticCluster{})
 			if err := m.StaticClusters[len(m.StaticClusters)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -2025,7 +3395,7 @@ func (m *ClustersConfigDump) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -2034,10 +3404,13 @@ func (m *ClustersConfigDump) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.DynamicActiveClusters = append(m.DynamicActiveClusters, ClustersConfigDump_DynamicCluster{})
+			m.DynamicActiveClusters = append(m.DynamicActiveClusters, &ClustersConfigDump_DynamicCluster{})
 			if err := m.DynamicActiveClusters[len(m.DynamicActiveClusters)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -2056,7 +3429,7 @@ func (m *ClustersConfigDump) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -2065,10 +3438,13 @@ func (m *ClustersConfigDump) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.DynamicWarmingClusters = append(m.DynamicWarmingClusters, ClustersConfigDump_DynamicCluster{})
+			m.DynamicWarmingClusters = append(m.DynamicWarmingClusters, &ClustersConfigDump_DynamicCluster{})
 			if err := m.DynamicWarmingClusters[len(m.DynamicWarmingClusters)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -2082,9 +3458,13 @@ func (m *ClustersConfigDump) Unmarshal(dAtA []byte) error {
 			if skippy < 0 {
 				return ErrInvalidLengthConfigDump
 			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -2109,7 +3489,7 @@ func (m *ClustersConfigDump_StaticCluster) Unmarshal(dAtA []byte) error {
 			}
 			b := dAtA[iNdEx]
 			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
+			wire |= uint64(b&0x7F) << shift
 			if b < 0x80 {
 				break
 			}
@@ -2137,7 +3517,7 @@ func (m *ClustersConfigDump_StaticCluster) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -2146,11 +3526,14 @@ func (m *ClustersConfigDump_StaticCluster) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Cluster == nil {
-				m.Cluster = &envoy_api_v22.Cluster{}
+				m.Cluster = &v21.Cluster{}
 			}
 			if err := m.Cluster.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -2170,7 +3553,7 @@ func (m *ClustersConfigDump_StaticCluster) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -2179,11 +3562,14 @@ func (m *ClustersConfigDump_StaticCluster) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
 			if m.LastUpdated == nil {
-				m.LastUpdated = &google_protobuf4.Timestamp{}
+				m.LastUpdated = &types.Timestamp{}
 			}
 			if err := m.LastUpdated.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -2198,9 +3584,13 @@ func (m *ClustersConfigDump_StaticCluster) Unmarshal(dAtA []byte) error {
 			if skippy < 0 {
 				return ErrInvalidLengthConfigDump
 			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -2225,7 +3615,7 @@ func (m *ClustersConfigDump_DynamicCluster) Unmarshal(dAtA []byte) error {
 			}
 			b := dAtA[iNdEx]
 			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
+			wire |= uint64(b&0x7F) << shift
 			if b < 0x80 {
 				break
 			}
@@ -2253,7 +3643,7 @@ func (m *ClustersConfigDump_DynamicCluster) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
+				stringLen |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -2263,6 +3653,9 @@ func (m *ClustersConfigDump_DynamicCluster) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -2282,7 +3675,7 @@ func (m *ClustersConfigDump_DynamicCluster) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -2291,11 +3684,14 @@ func (m *ClustersConfigDump_DynamicCluster) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Cluster == nil {
-				m.Cluster = &envoy_api_v22.Cluster{}
+				m.Cluster = &v21.Cluster{}
 			}
 			if err := m.Cluster.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -2315,7 +3711,7 @@ func (m *ClustersConfigDump_DynamicCluster) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -2324,11 +3720,14 @@ func (m *ClustersConfigDump_DynamicCluster) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
 			if m.LastUpdated == nil {
-				m.LastUpdated = &google_protobuf4.Timestamp{}
+				m.LastUpdated = &types.Timestamp{}
 			}
 			if err := m.LastUpdated.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -2343,9 +3742,13 @@ func (m *ClustersConfigDump_DynamicCluster) Unmarshal(dAtA []byte) error {
 			if skippy < 0 {
 				return ErrInvalidLengthConfigDump
 			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -2370,7 +3773,7 @@ func (m *RoutesConfigDump) Unmarshal(dAtA []byte) error {
 			}
 			b := dAtA[iNdEx]
 			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
+			wire |= uint64(b&0x7F) << shift
 			if b < 0x80 {
 				break
 			}
@@ -2398,7 +3801,7 @@ func (m *RoutesConfigDump) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -2407,10 +3810,13 @@ func (m *RoutesConfigDump) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.StaticRouteConfigs = append(m.StaticRouteConfigs, RoutesConfigDump_StaticRouteConfig{})
+			m.StaticRouteConfigs = append(m.StaticRouteConfigs, &RoutesConfigDump_StaticRouteConfig{})
 			if err := m.StaticRouteConfigs[len(m.StaticRouteConfigs)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -2429,7 +3835,7 @@ func (m *RoutesConfigDump) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -2438,10 +3844,13 @@ func (m *RoutesConfigDump) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.DynamicRouteConfigs = append(m.DynamicRouteConfigs, RoutesConfigDump_DynamicRouteConfig{})
+			m.DynamicRouteConfigs = append(m.DynamicRouteConfigs, &RoutesConfigDump_DynamicRouteConfig{})
 			if err := m.DynamicRouteConfigs[len(m.DynamicRouteConfigs)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -2455,9 +3864,13 @@ func (m *RoutesConfigDump) Unmarshal(dAtA []byte) error {
 			if skippy < 0 {
 				return ErrInvalidLengthConfigDump
 			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -2482,7 +3895,7 @@ func (m *RoutesConfigDump_StaticRouteConfig) Unmarshal(dAtA []byte) error {
 			}
 			b := dAtA[iNdEx]
 			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
+			wire |= uint64(b&0x7F) << shift
 			if b < 0x80 {
 				break
 			}
@@ -2510,7 +3923,7 @@ func (m *RoutesConfigDump_StaticRouteConfig) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -2519,11 +3932,14 @@ func (m *RoutesConfigDump_StaticRouteConfig) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
 			if m.RouteConfig == nil {
-				m.RouteConfig = &envoy_api_v24.RouteConfiguration{}
+				m.RouteConfig = &v21.RouteConfiguration{}
 			}
 			if err := m.RouteConfig.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -2543,7 +3959,7 @@ func (m *RoutesConfigDump_StaticRouteConfig) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -2552,11 +3968,14 @@ func (m *RoutesConfigDump_StaticRouteConfig) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
 			if m.LastUpdated == nil {
-				m.LastUpdated = &google_protobuf4.Timestamp{}
+				m.LastUpdated = &types.Timestamp{}
 			}
 			if err := m.LastUpdated.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -2571,9 +3990,13 @@ func (m *RoutesConfigDump_StaticRouteConfig) Unmarshal(dAtA []byte) error {
 			if skippy < 0 {
 				return ErrInvalidLengthConfigDump
 			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -2598,7 +4021,7 @@ func (m *RoutesConfigDump_DynamicRouteConfig) Unmarshal(dAtA []byte) error {
 			}
 			b := dAtA[iNdEx]
 			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
+			wire |= uint64(b&0x7F) << shift
 			if b < 0x80 {
 				break
 			}
@@ -2626,7 +4049,7 @@ func (m *RoutesConfigDump_DynamicRouteConfig) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
+				stringLen |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -2636,6 +4059,9 @@ func (m *RoutesConfigDump_DynamicRouteConfig) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -2655,7 +4081,7 @@ func (m *RoutesConfigDump_DynamicRouteConfig) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -2664,11 +4090,14 @@ func (m *RoutesConfigDump_DynamicRouteConfig) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
 			if m.RouteConfig == nil {
-				m.RouteConfig = &envoy_api_v24.RouteConfiguration{}
+				m.RouteConfig = &v21.RouteConfiguration{}
 			}
 			if err := m.RouteConfig.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -2688,7 +4117,7 @@ func (m *RoutesConfigDump_DynamicRouteConfig) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -2697,11 +4126,14 @@ func (m *RoutesConfigDump_DynamicRouteConfig) Unmarshal(dAtA []byte) error {
 				return ErrInvalidLengthConfigDump
 			}
 			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
 			if m.LastUpdated == nil {
-				m.LastUpdated = &google_protobuf4.Timestamp{}
+				m.LastUpdated = &types.Timestamp{}
 			}
 			if err := m.LastUpdated.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -2716,9 +4148,983 @@ func (m *RoutesConfigDump_DynamicRouteConfig) Unmarshal(dAtA []byte) error {
 			if skippy < 0 {
 				return ErrInvalidLengthConfigDump
 			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthConfigDump
+			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ScopedRoutesConfigDump) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowConfigDump
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ScopedRoutesConfigDump: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ScopedRoutesConfigDump: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field InlineScopedRouteConfigs", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfigDump
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.InlineScopedRouteConfigs = append(m.InlineScopedRouteConfigs, &ScopedRoutesConfigDump_InlineScopedRouteConfigs{})
+			if err := m.InlineScopedRouteConfigs[len(m.InlineScopedRouteConfigs)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DynamicScopedRouteConfigs", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfigDump
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.DynamicScopedRouteConfigs = append(m.DynamicScopedRouteConfigs, &ScopedRoutesConfigDump_DynamicScopedRouteConfigs{})
+			if err := m.DynamicScopedRouteConfigs[len(m.DynamicScopedRouteConfigs)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipConfigDump(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ScopedRoutesConfigDump_InlineScopedRouteConfigs) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowConfigDump
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: InlineScopedRouteConfigs: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: InlineScopedRouteConfigs: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfigDump
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Name = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ScopedRouteConfigs", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfigDump
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ScopedRouteConfigs = append(m.ScopedRouteConfigs, &v21.ScopedRouteConfiguration{})
+			if err := m.ScopedRouteConfigs[len(m.ScopedRouteConfigs)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LastUpdated", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfigDump
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.LastUpdated == nil {
+				m.LastUpdated = &types.Timestamp{}
+			}
+			if err := m.LastUpdated.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipConfigDump(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ScopedRoutesConfigDump_DynamicScopedRouteConfigs) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowConfigDump
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: DynamicScopedRouteConfigs: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: DynamicScopedRouteConfigs: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfigDump
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Name = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field VersionInfo", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfigDump
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.VersionInfo = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ScopedRouteConfigs", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfigDump
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ScopedRouteConfigs = append(m.ScopedRouteConfigs, &v21.ScopedRouteConfiguration{})
+			if err := m.ScopedRouteConfigs[len(m.ScopedRouteConfigs)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LastUpdated", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfigDump
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.LastUpdated == nil {
+				m.LastUpdated = &types.Timestamp{}
+			}
+			if err := m.LastUpdated.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipConfigDump(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *SecretsConfigDump) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowConfigDump
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: SecretsConfigDump: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: SecretsConfigDump: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field StaticSecrets", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfigDump
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.StaticSecrets = append(m.StaticSecrets, &SecretsConfigDump_StaticSecret{})
+			if err := m.StaticSecrets[len(m.StaticSecrets)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DynamicActiveSecrets", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfigDump
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.DynamicActiveSecrets = append(m.DynamicActiveSecrets, &SecretsConfigDump_DynamicSecret{})
+			if err := m.DynamicActiveSecrets[len(m.DynamicActiveSecrets)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DynamicWarmingSecrets", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfigDump
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.DynamicWarmingSecrets = append(m.DynamicWarmingSecrets, &SecretsConfigDump_DynamicSecret{})
+			if err := m.DynamicWarmingSecrets[len(m.DynamicWarmingSecrets)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipConfigDump(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *SecretsConfigDump_DynamicSecret) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowConfigDump
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: DynamicSecret: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: DynamicSecret: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfigDump
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Name = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field VersionInfo", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfigDump
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.VersionInfo = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LastUpdated", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfigDump
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.LastUpdated == nil {
+				m.LastUpdated = &types.Timestamp{}
+			}
+			if err := m.LastUpdated.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Secret", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfigDump
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Secret == nil {
+				m.Secret = &auth.Secret{}
+			}
+			if err := m.Secret.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipConfigDump(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *SecretsConfigDump_StaticSecret) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowConfigDump
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: StaticSecret: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: StaticSecret: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfigDump
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Name = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LastUpdated", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfigDump
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.LastUpdated == nil {
+				m.LastUpdated = &types.Timestamp{}
+			}
+			if err := m.LastUpdated.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Secret", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfigDump
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Secret == nil {
+				m.Secret = &auth.Secret{}
+			}
+			if err := m.Secret.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipConfigDump(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthConfigDump
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -2782,8 +5188,11 @@ func skipConfigDump(dAtA []byte) (n int, err error) {
 					break
 				}
 			}
-			iNdEx += length
 			if length < 0 {
+				return 0, ErrInvalidLengthConfigDump
+			}
+			iNdEx += length
+			if iNdEx < 0 {
 				return 0, ErrInvalidLengthConfigDump
 			}
 			return iNdEx, nil
@@ -2814,6 +5223,9 @@ func skipConfigDump(dAtA []byte) (n int, err error) {
 					return 0, err
 				}
 				iNdEx = start + next
+				if iNdEx < 0 {
+					return 0, ErrInvalidLengthConfigDump
+				}
 			}
 			return iNdEx, nil
 		case 4:
@@ -2832,58 +5244,3 @@ var (
 	ErrInvalidLengthConfigDump = fmt.Errorf("proto: negative length found during unmarshaling")
 	ErrIntOverflowConfigDump   = fmt.Errorf("proto: integer overflow")
 )
-
-func init() { proto.RegisterFile("envoy/admin/v2alpha/config_dump.proto", fileDescriptorConfigDump) }
-
-var fileDescriptorConfigDump = []byte{
-	// 781 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x95, 0xcf, 0x6f, 0xd3, 0x48,
-	0x14, 0xc7, 0x77, 0x92, 0xb4, 0xdd, 0xbe, 0x64, 0xdb, 0xee, 0xa4, 0x4d, 0x53, 0x1f, 0xda, 0x6c,
-	0xb5, 0x2b, 0x75, 0x57, 0x2b, 0x5b, 0x0a, 0x02, 0x2a, 0x24, 0x0e, 0xfd, 0x81, 0x04, 0x52, 0x0f,
-	0xc8, 0x80, 0x38, 0x46, 0xd3, 0xd8, 0x49, 0x2d, 0x12, 0x8f, 0xe5, 0x19, 0x1b, 0x82, 0x90, 0x38,
-	0xf0, 0x47, 0x70, 0xe3, 0xc2, 0x81, 0x0b, 0x27, 0xae, 0xdc, 0x51, 0x6f, 0xf0, 0x17, 0x20, 0xd4,
-	0xbf, 0x04, 0xc5, 0x7e, 0xe3, 0xd8, 0x4e, 0xa8, 0x92, 0x36, 0xb7, 0xc9, 0x9b, 0x37, 0xef, 0xf3,
-	0x9d, 0x37, 0xdf, 0xe7, 0xc0, 0x3f, 0xb6, 0x1b, 0xf2, 0x81, 0xc1, 0xac, 0xbe, 0xe3, 0x1a, 0x61,
-	0x93, 0xf5, 0xbc, 0x33, 0x66, 0xb4, 0xb9, 0xdb, 0x71, 0xba, 0x2d, 0x2b, 0xe8, 0x7b, 0xba, 0xe7,
-	0x73, 0xc9, 0x69, 0x35, 0x4a, 0xd3, 0xa3, 0x34, 0x1d, 0xd3, 0xb4, 0x1a, 0x9e, 0xf5, 0x1c, 0x23,
-	0x6c, 0x1a, 0x6d, 0x4b, 0xc4, 0xc9, 0xb9, 0x78, 0xef, 0x17, 0x71, 0x3f, 0x89, 0xff, 0x1b, 0xc7,
-	0x63, 0xaa, 0x71, 0xca, 0xb9, 0x14, 0xd2, 0x67, 0xde, 0x30, 0x29, 0xf9, 0x81, 0xa9, 0x5b, 0x5d,
-	0xce, 0xbb, 0x3d, 0xdb, 0x88, 0x7e, 0x9d, 0x06, 0x1d, 0x83, 0xb9, 0x03, 0xdc, 0xda, 0xc9, 0x6f,
-	0x49, 0xa7, 0x6f, 0x0b, 0xc9, 0xd4, 0x1d, 0xb4, 0xf5, 0x2e, 0xef, 0xf2, 0x68, 0x69, 0x0c, 0x57,
-	0x71, 0x74, 0xf7, 0x23, 0x01, 0x38, 0x8a, 0xc8, 0xc7, 0x41, 0xdf, 0xa3, 0x27, 0xb0, 0x14, 0xeb,
-	0x10, 0x75, 0xd2, 0x28, 0xee, 0x95, 0x9b, 0xff, 0xeb, 0x13, 0xae, 0xae, 0x8f, 0x4e, 0xe0, 0x52,
-	0xdc, 0x73, 0xa5, 0x3f, 0x38, 0x2c, 0x9d, 0x7f, 0xdf, 0xf9, 0xcd, 0x54, 0x25, 0xb4, 0x87, 0x50,
-	0x49, 0x6f, 0xd3, 0x35, 0x28, 0x3e, 0xb3, 0x07, 0x75, 0xd2, 0x20, 0x7b, 0xcb, 0xe6, 0x70, 0x49,
-	0xff, 0x83, 0x85, 0x90, 0xf5, 0x02, 0xbb, 0x5e, 0x68, 0x90, 0xbd, 0x72, 0x73, 0x5d, 0x8f, 0x6f,
-	0xa1, 0xab, 0x5b, 0xe8, 0x07, 0xee, 0xc0, 0x8c, 0x53, 0xee, 0x14, 0xf6, 0xc9, 0xee, 0x3b, 0x02,
-	0xd5, 0x43, 0xd5, 0x94, 0x94, 0xee, 0xfb, 0xb0, 0x9c, 0xf4, 0x2a, 0xaa, 0x5f, 0x6e, 0xfe, 0x8d,
-	0xca, 0x63, 0x31, 0xfa, 0xa8, 0x95, 0x61, 0x53, 0x4f, 0x4a, 0xa0, 0xe2, 0xd1, 0x61, 0x7a, 0x17,
-	0x2a, 0x3d, 0x26, 0x64, 0x2b, 0xf0, 0x2c, 0x26, 0x6d, 0x0b, 0x85, 0x69, 0x63, 0xc2, 0x1e, 0xab,
-	0xf6, 0x9a, 0xe5, 0x61, 0xfe, 0x93, 0x38, 0x7d, 0xf7, 0xcb, 0x22, 0x54, 0x4f, 0x1c, 0x21, 0x6d,
-	0xd7, 0xf6, 0x45, 0x4a, 0xe0, 0x5f, 0x50, 0x09, 0x6d, 0x5f, 0x38, 0xdc, 0x6d, 0x39, 0x6e, 0x87,
-	0x63, 0x0f, 0xca, 0x18, 0x7b, 0xe0, 0x76, 0x38, 0x3d, 0x83, 0x35, 0x21, 0x99, 0x74, 0xda, 0xad,
-	0x9e, 0x2a, 0x50, 0x2f, 0x44, 0x8f, 0x70, 0x7b, 0xe2, 0x23, 0x4c, 0xc0, 0xe8, 0x8f, 0xa2, 0x02,
-	0x6a, 0x07, 0x6f, 0xb7, 0x2a, 0x32, 0x51, 0x41, 0x5f, 0x40, 0xdd, 0x1a, 0xb8, 0xac, 0xef, 0xb4,
-	0x5b, 0xac, 0x2d, 0x9d, 0xd0, 0x4e, 0x11, 0x8b, 0x11, 0x71, 0x7f, 0x6a, 0xe2, 0x71, 0x5c, 0x28,
-	0x87, 0xac, 0x61, 0xfd, 0x83, 0xa8, 0xfc, 0x88, 0xfc, 0x12, 0xb6, 0x14, 0xf9, 0x39, 0xf3, 0xfb,
-	0x8e, 0xdb, 0x4d, 0xa1, 0x4b, 0x73, 0x41, 0x6f, 0x22, 0xe0, 0x69, 0x5c, 0x7f, 0xc4, 0x7e, 0x05,
-	0x9a, 0x62, 0x5b, 0x3e, 0x73, 0xdc, 0x2c, 0x7c, 0x61, 0x2e, 0x70, 0xd5, 0xd7, 0x63, 0x04, 0x24,
-	0x27, 0xb5, 0x37, 0x04, 0x56, 0xb2, 0xaf, 0x43, 0x9b, 0xf0, 0xbb, 0xe2, 0xa3, 0x67, 0x6b, 0x0a,
-	0xef, 0x39, 0x43, 0x9b, 0xaa, 0x4c, 0x33, 0xc9, 0xbb, 0xa6, 0x3d, 0xb5, 0x0f, 0x04, 0x56, 0x73,
-	0xca, 0xa7, 0xb1, 0x66, 0x5a, 0x69, 0xe1, 0x8a, 0x4a, 0x8b, 0xb3, 0x0d, 0xd2, 0xa7, 0x05, 0xa0,
-	0x47, 0xbd, 0x40, 0xc8, 0x99, 0xe7, 0xc8, 0x02, 0x34, 0x7c, 0xab, 0x8d, 0xe7, 0x71, 0x8c, 0x6e,
-	0x4e, 0xfe, 0x96, 0x8d, 0x41, 0x70, 0x8a, 0x70, 0x03, 0x5f, 0x76, 0x45, 0xa4, 0x83, 0x82, 0x4a,
-	0xd8, 0xcc, 0xcd, 0x50, 0x42, 0x8b, 0x47, 0xe8, 0xd6, 0xb4, 0x34, 0x7c, 0x8f, 0x2c, 0x6e, 0x23,
-	0x33, 0x40, 0x09, 0x35, 0x1c, 0x4d, 0xae, 0x9a, 0x9f, 0x04, 0x5b, 0x9a, 0x03, 0xb6, 0x96, 0x1d,
-	0x1e, 0x75, 0x4c, 0x7b, 0x0d, 0x7f, 0x64, 0x9a, 0x42, 0x0d, 0x58, 0x42, 0x30, 0x5a, 0x77, 0x23,
-	0x6b, 0x08, 0xcc, 0x33, 0x55, 0xd6, 0x75, 0x8d, 0xfb, 0x9e, 0xc0, 0x4a, 0x56, 0xf1, 0x34, 0x56,
-	0x48, 0xa9, 0x2c, 0x5c, 0x49, 0xe5, 0x8c, 0xa6, 0xfd, 0x5a, 0x82, 0x35, 0x93, 0x07, 0xd2, 0x4e,
-	0x5b, 0x96, 0xc3, 0x3a, 0xfa, 0xd1, 0x1f, 0x6e, 0xb5, 0xd4, 0x1f, 0xec, 0x65, 0xdf, 0xf6, 0x7c,
-	0x11, 0xb4, 0x64, 0x14, 0x8e, 0xa3, 0xf8, 0x60, 0x54, 0xe4, 0x37, 0x04, 0xf5, 0x41, 0xb9, 0x27,
-	0x47, 0xbc, 0xec, 0xdb, 0x3e, 0x46, 0xc4, 0x6e, 0x8f, 0x23, 0xab, 0xd6, 0xd8, 0x8e, 0xd0, 0xde,
-	0x12, 0xf8, 0x73, 0x4c, 0x23, 0x3d, 0x82, 0x4a, 0x5a, 0x01, 0x5a, 0xa5, 0x91, 0x7d, 0x84, 0xd4,
-	0x81, 0xc0, 0x67, 0xd2, 0xe1, 0xae, 0x59, 0xf6, 0x53, 0x45, 0xae, 0xe9, 0x9c, 0xcf, 0x04, 0xe8,
-	0xf8, 0x5d, 0xa6, 0x71, 0x4f, 0x5e, 0x7d, 0x61, 0x1e, 0xea, 0x67, 0x73, 0xd4, 0x61, 0xe5, 0xfc,
-	0x62, 0x9b, 0x7c, 0xbb, 0xd8, 0x26, 0x3f, 0x2e, 0xb6, 0xc9, 0xe9, 0x62, 0x94, 0x7e, 0xe3, 0x67,
-	0x00, 0x00, 0x00, 0xff, 0xff, 0xa8, 0xf3, 0x64, 0xe5, 0xb7, 0x0a, 0x00, 0x00,
-}

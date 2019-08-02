@@ -24,24 +24,36 @@ import (
 	"io"
 	"net"
 	"os"
+	"path"
 	"reflect"
 	"strconv"
 	"strings"
 	"text/template"
 
+	"istio.io/istio/pkg/annotations"
+
 	"github.com/ghodss/yaml"
-	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/duration"
+	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"k8s.io/api/batch/v2alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 
 	meshconfig "istio.io/api/mesh/v1alpha1"
+	"istio.io/istio/pilot/pkg/model"
 	"istio.io/istio/pkg/log"
+)
+
+type annotationValidationFunc func(value string) error
+
+const (
+	annotationPolicy                = "sidecar.istio.io/inject"
+	annotationStatus                = "sidecar.istio.io/status"
+	annotationRewriteAppHTTPProbers = "sidecar.istio.io/rewriteAppHTTPProbers"
 )
 
 // per-sidecar policy and status
@@ -50,56 +62,37 @@ var (
 		return nil
 	}
 
-	annotationRegistry = []*registeredAnnotation{
-		{"sidecar.istio.io/inject", alwaysValidFunc},
-		{"sidecar.istio.io/status", alwaysValidFunc},
-		{"sidecar.istio.io/proxyImage", alwaysValidFunc},
-		{"sidecar.istio.io/interceptionMode", validateInterceptionMode},
-		{"status.sidecar.istio.io/port", validateStatusPort},
-		{"readiness.status.sidecar.istio.io/initialDelaySeconds", validateUInt32},
-		{"readiness.status.sidecar.istio.io/periodSeconds", validateUInt32},
-		{"readiness.status.sidecar.istio.io/failureThreshold", validateUInt32},
-		{"readiness.status.sidecar.istio.io/applicationPorts", validateReadinessApplicationPorts},
-		{"traffic.sidecar.istio.io/includeOutboundIPRanges", ValidateIncludeIPRanges},
-		{"traffic.sidecar.istio.io/excludeOutboundIPRanges", ValidateExcludeIPRanges},
-		{"traffic.sidecar.istio.io/includeInboundPorts", ValidateIncludeInboundPorts},
-		{"traffic.sidecar.istio.io/excludeInboundPorts", ValidateExcludeInboundPorts},
+	annotationRegistry = map[string]annotationValidationFunc{
+		annotations.Register(annotationPolicy, "").Name: alwaysValidFunc,
+		annotations.Register(annotationStatus, "").Name: alwaysValidFunc,
+		annotations.Register(annotationRewriteAppHTTPProbers,
+			"Rewrite HTTP readiness and liveness probes to be redirected to istio-proxy sidecar").Name: alwaysValidFunc,
+		annotations.Register("sidecar.istio.io/proxyImage", "").Name:                           alwaysValidFunc,
+		annotations.Register("sidecar.istio.io/interceptionMode", "").Name:                     validateInterceptionMode,
+		annotations.Register("status.sidecar.istio.io/port", "").Name:                          validateStatusPort,
+		annotations.Register("readiness.status.sidecar.istio.io/initialDelaySeconds", "").Name: validateUInt32,
+		annotations.Register("readiness.status.sidecar.istio.io/periodSeconds", "").Name:       validateUInt32,
+		annotations.Register("readiness.status.sidecar.istio.io/failureThreshold", "").Name:    validateUInt32,
+		annotations.Register("readiness.status.sidecar.istio.io/applicationPorts", "").Name:    validateReadinessApplicationPorts,
+		annotations.Register("traffic.sidecar.istio.io/includeOutboundIPRanges", "").Name:      ValidateIncludeIPRanges,
+		annotations.Register("traffic.sidecar.istio.io/excludeOutboundIPRanges", "").Name:      ValidateExcludeIPRanges,
+		annotations.Register("traffic.sidecar.istio.io/includeInboundPorts", "").Name:          ValidateIncludeInboundPorts,
+		annotations.Register("traffic.sidecar.istio.io/excludeInboundPorts", "").Name:          ValidateExcludeInboundPorts,
+		annotations.Register("traffic.sidecar.istio.io/kubevirtInterfaces", "").Name:           alwaysValidFunc,
 	}
-
-	annotationPolicy = annotationRegistry[0]
-	annotationStatus = annotationRegistry[1]
 )
 
-type annotationValidationFunc func(value string) error
-
 func validateAnnotations(annotations map[string]string) (err error) {
-	for _, validator := range annotationRegistry {
-		if e := validator.validate(annotations); e != nil {
-			err = multierror.Append(err, e)
+	for name, value := range annotations {
+		if v, ok := annotationRegistry[name]; ok {
+			if e := v(value); e != nil {
+				err = multierror.Append(err, fmt.Errorf("invalid value '%s' for annotation '%s': %v", value, name, e))
+			}
+		} else if strings.Contains(name, "istio") {
+			log.Warnf("Potentially misspelled annotation '%s' with value '%s' encountered", name, value)
 		}
 	}
 	return
-}
-
-type registeredAnnotation struct {
-	name      string
-	validator annotationValidationFunc
-}
-
-func (v *registeredAnnotation) getValueOrDefault(annotations map[string]string, defaultValue string) string {
-	if val, ok := annotations[v.name]; ok {
-		return val
-	}
-	return defaultValue
-}
-
-func (v *registeredAnnotation) validate(annotations map[string]string) error {
-	if val, ok := annotations[v.name]; ok {
-		if err := v.validator(val); err != nil {
-			return fmt.Errorf("injection failed. Invalid value for annotation %s: %s. Error: %v", v.name, val, err)
-		}
-	}
-	return nil
 }
 
 // InjectionPolicy determines the policy for injecting the
@@ -134,6 +127,7 @@ const (
 	DefaultReadinessFailureThreshold    = 30
 	DefaultIncludeIPRanges              = "*"
 	DefaultIncludeInboundPorts          = "*"
+	DefaultkubevirtInterfaces           = ""
 )
 
 const (
@@ -144,19 +138,25 @@ const (
 // SidecarInjectionSpec collects all container types and volumes for
 // sidecar mesh injection
 type SidecarInjectionSpec struct {
-	InitContainers   []corev1.Container            `yaml:"initContainers"`
-	Containers       []corev1.Container            `yaml:"containers"`
-	Volumes          []corev1.Volume               `yaml:"volumes"`
-	ImagePullSecrets []corev1.LocalObjectReference `yaml:"imagePullSecrets"`
+	// RewriteHTTPProbe indicates whether Kubernetes HTTP prober in the PodSpec
+	// will be rewritten to be redirected by pilot agent.
+	RewriteAppHTTPProbe bool                          `yaml:"rewriteAppHTTPProbe"`
+	InitContainers      []corev1.Container            `yaml:"initContainers"`
+	Containers          []corev1.Container            `yaml:"containers"`
+	Volumes             []corev1.Volume               `yaml:"volumes"`
+	DNSConfig           *corev1.PodDNSConfig          `yaml:"dnsConfig"`
+	ImagePullSecrets    []corev1.LocalObjectReference `yaml:"imagePullSecrets"`
 }
 
 // SidecarTemplateData is the data object to which the templated
 // version of `SidecarInjectionSpec` is applied.
 type SidecarTemplateData struct {
-	ObjectMeta  *metav1.ObjectMeta
-	Spec        *corev1.PodSpec
-	ProxyConfig *meshconfig.ProxyConfig
-	MeshConfig  *meshconfig.MeshConfig
+	DeploymentMeta *metav1.ObjectMeta
+	ObjectMeta     *metav1.ObjectMeta
+	Spec           *corev1.PodSpec
+	ProxyConfig    *meshconfig.ProxyConfig
+	MeshConfig     *meshconfig.MeshConfig
+	Values         map[string]interface{}
 }
 
 // InitImageName returns the fully qualified image name for the istio
@@ -178,20 +178,11 @@ func ProxyImageName(hub string, tag string, debug bool) string {
 // Params describes configurable parameters for injecting istio proxy
 // into a kubernetes resource.
 type Params struct {
-	InitImage                    string                 `json:"initImage"`
-	ProxyImage                   string                 `json:"proxyImage"`
-	Verbosity                    int                    `json:"verbosity"`
-	SidecarProxyUID              uint64                 `json:"sidecarProxyUID"`
-	Version                      string                 `json:"version"`
-	EnableCoreDump               bool                   `json:"enableCoreDump"`
-	DebugMode                    bool                   `json:"debugMode"`
-	Privileged                   bool                   `json:"privileged"`
-	Mesh                         *meshconfig.MeshConfig `json:"-"`
-	ImagePullPolicy              string                 `json:"imagePullPolicy"`
-	StatusPort                   int                    `json:"statusPort"`
-	ReadinessInitialDelaySeconds uint32                 `json:"readinessInitialDelaySeconds"`
-	ReadinessPeriodSeconds       uint32                 `json:"readinessPeriodSeconds"`
-	ReadinessFailureThreshold    uint32                 `json:"readinessFailureThreshold"`
+	InitImage       string `json:"initImage"`
+	ProxyImage      string `json:"proxyImage"`
+	Version         string `json:"version"`
+	ImagePullPolicy string `json:"imagePullPolicy"`
+	Tracer          string `json:"tracer"`
 	// Comma separated list of IP ranges in CIDR form. If set, only redirect outbound traffic to Envoy for these IP
 	// ranges. All outbound traffic can be redirected with the wildcard character "*". Defaults to "*".
 	IncludeIPRanges string `json:"includeIPRanges"`
@@ -205,6 +196,23 @@ type Params struct {
 	// Comma separated list of inbound ports. If set, inbound traffic will not be redirected for those ports.
 	// Exclusions are only applied if configured to redirect all inbound traffic. By default, no ports are excluded.
 	ExcludeInboundPorts string `json:"excludeInboundPorts"`
+	// Comma separated list of virtual interfaces whose inbound traffic (from VM) will be treated as outbound
+	// By default, no interfaces are configured.
+	KubevirtInterfaces           string                 `json:"kubevirtInterfaces"`
+	Verbosity                    int                    `json:"verbosity"`
+	SidecarProxyUID              uint64                 `json:"sidecarProxyUID"`
+	Mesh                         *meshconfig.MeshConfig `json:"-"`
+	StatusPort                   int                    `json:"statusPort"`
+	ReadinessInitialDelaySeconds uint32                 `json:"readinessInitialDelaySeconds"`
+	ReadinessPeriodSeconds       uint32                 `json:"readinessPeriodSeconds"`
+	ReadinessFailureThreshold    uint32                 `json:"readinessFailureThreshold"`
+	RewriteAppHTTPProbe          bool                   `json:"rewriteAppHTTPProbe"`
+	EnableCoreDump               bool                   `json:"enableCoreDump"`
+	DebugMode                    bool                   `json:"debugMode"`
+	Privileged                   bool                   `json:"privileged"`
+	SDSEnabled                   bool                   `json:"sdsEnabled"`
+	EnableSdsTokenMount          bool                   `json:"enableSdsTokenMount"`
+	PodDNSSearchNamespaces       []string               `json:"podDNSSearchNamespaces"`
 }
 
 // Validate validates the parameters and returns an error if there is configuration issue.
@@ -221,8 +229,41 @@ func (p *Params) Validate() error {
 	return ValidateExcludeInboundPorts(p.ExcludeInboundPorts)
 }
 
+// intoHelmValues returns a map of the traversed path in helm values YAML to the param value.
+func (p *Params) intoHelmValues() map[string]string {
+	vals := map[string]string{
+		"global.proxy_init.image":                    p.InitImage,
+		"global.proxy.image":                         p.ProxyImage,
+		"global.proxy.enableCoreDump":                strconv.FormatBool(p.EnableCoreDump),
+		"global.proxy.privileged":                    strconv.FormatBool(p.Privileged),
+		"global.imagePullPolicy":                     p.ImagePullPolicy,
+		"global.proxy.statusPort":                    strconv.Itoa(p.StatusPort),
+		"global.proxy.tracer":                        p.Tracer,
+		"global.proxy.readinessInitialDelaySeconds":  strconv.Itoa(int(p.ReadinessInitialDelaySeconds)),
+		"global.proxy.readinessPeriodSeconds":        strconv.Itoa(int(p.ReadinessPeriodSeconds)),
+		"global.proxy.readinessFailureThreshold":     strconv.Itoa(int(p.ReadinessFailureThreshold)),
+		"global.sds.enabled":                         strconv.FormatBool(p.SDSEnabled),
+		"global.sds.useTrustworthyJwt":               strconv.FormatBool(p.EnableSdsTokenMount),
+		"global.proxy.includeIPRanges":               p.IncludeIPRanges,
+		"global.proxy.excludeIPRanges":               p.ExcludeIPRanges,
+		"global.proxy.includeInboundPorts":           p.IncludeInboundPorts,
+		"global.proxy.excludeInboundPorts":           p.ExcludeInboundPorts,
+		"sidecarInjectorWebhook.rewriteAppHTTPProbe": strconv.FormatBool(p.RewriteAppHTTPProbe),
+		"global.podDNSSearchNamespaces":              getHelmValue(p.PodDNSSearchNamespaces),
+	}
+	return vals
+}
+
+func getHelmValue(namespace []string) string {
+	if len(namespace) == 0 {
+		return ""
+	}
+
+	return "{" + strings.Join(namespace, ",") + "}"
+}
+
 // Config specifies the sidecar injection configuration This includes
-// the sidear template and cluster-side injection policy. It is used
+// the sidecar template and cluster-side injection policy. It is used
 // by kube-inject, sidecar injector, and http endpoint.
 type Config struct {
 	Policy InjectionPolicy `json:"policy"`
@@ -230,6 +271,17 @@ type Config struct {
 	// Template is the templated version of `SidecarInjectionSpec` prior to
 	// expansion over the `SidecarTemplateData`.
 	Template string `json:"template"`
+
+	// NeverInjectSelector: Refuses the injection on pods whose labels match this selector.
+	// It's an array of label selectors, that will be OR'ed, meaning we will iterate
+	// over it and stop at the first match
+	// Takes precedence over AlwaysInjectSelector.
+	NeverInjectSelector []metav1.LabelSelector `json:"neverInjectSelector"`
+
+	// AlwaysInjectSelector: Forces the injection on pods whose labels match this selector.
+	// It's an array of label selectors, that will be OR'ed, meaning we will iterate
+	// over it and stop at the first match
+	AlwaysInjectSelector []metav1.LabelSelector `json:"alwaysInjectSelector"`
 }
 
 func validateCIDRList(cidrs string) error {
@@ -264,7 +316,7 @@ func parsePorts(portsString string) ([]int, error) {
 			if err != nil {
 				return nil, fmt.Errorf("failed parsing port '%d': %v", port, err)
 			}
-			ports = append(ports, int(port))
+			ports = append(ports, port)
 		}
 	}
 	return ports, nil
@@ -282,8 +334,9 @@ func validateInterceptionMode(mode string) error {
 	switch mode {
 	case meshconfig.ProxyConfig_REDIRECT.String():
 	case meshconfig.ProxyConfig_TPROXY.String():
+	case string(model.InterceptionNone): // not a global mesh config - must be enabled for each sidecar
 	default:
-		return fmt.Errorf("interceptionMode invalid: %v", mode)
+		return fmt.Errorf("interceptionMode invalid, use REDIRECT,TPROXY,NONE: %v", mode)
 	}
 	return nil
 }
@@ -340,7 +393,7 @@ func validateUInt32(value string) error {
 	return err
 }
 
-func injectRequired(ignored []string, namespacePolicy InjectionPolicy, podSpec *corev1.PodSpec, metadata *metav1.ObjectMeta) bool { // nolint: lll
+func injectRequired(ignored []string, config *Config, podSpec *corev1.PodSpec, metadata *metav1.ObjectMeta) bool { // nolint: lll
 	// Skip injection when host networking is enabled. The problem is
 	// that the iptable changes are assumed to be within the pod when,
 	// in fact, they are changing the routing at the host level. This
@@ -365,7 +418,7 @@ func injectRequired(ignored []string, namespacePolicy InjectionPolicy, podSpec *
 
 	var useDefault bool
 	var inject bool
-	switch strings.ToLower(annotations[annotationPolicy.name]) {
+	switch strings.ToLower(annotations[annotationPolicy]) {
 	// http://yaml.org/type/bool.html
 	case "y", "yes", "true", "on":
 		inject = true
@@ -373,11 +426,43 @@ func injectRequired(ignored []string, namespacePolicy InjectionPolicy, podSpec *
 		useDefault = true
 	}
 
+	// If an annotation is not explicitly given, check the LabelSelectors, starting with NeverInject
+	if useDefault {
+		for _, neverSelector := range config.NeverInjectSelector {
+			selector, err := metav1.LabelSelectorAsSelector(&neverSelector)
+			if err != nil {
+				log.Warnf("Invalid selector for NeverInjectSelector: %v (%v)", neverSelector, err)
+			} else if !selector.Empty() && selector.Matches(labels.Set(metadata.Labels)) {
+				log.Debugf("Explicitly disabling injection for pod %s/%s due to pod labels matching NeverInjectSelector config map entry.",
+					metadata.Namespace, potentialPodName(metadata))
+				inject = false
+				useDefault = false
+				break
+			}
+		}
+	}
+
+	// If there's no annotation nor a NeverInjectSelector, check the AlwaysInject one
+	if useDefault {
+		for _, alwaysSelector := range config.AlwaysInjectSelector {
+			selector, err := metav1.LabelSelectorAsSelector(&alwaysSelector)
+			if err != nil {
+				log.Warnf("Invalid selector for AlwaysInjectSelector: %v (%v)", alwaysSelector, err)
+			} else if !selector.Empty() && selector.Matches(labels.Set(metadata.Labels)) {
+				log.Debugf("Explicitly enabling injection for pod %s/%s due to pod labels matching AlwaysInjectSelector config map entry.",
+					metadata.Namespace, potentialPodName(metadata))
+				inject = true
+				useDefault = false
+				break
+			}
+		}
+	}
+
 	var required bool
-	switch namespacePolicy {
+	switch config.Policy {
 	default: // InjectionPolicyOff
 		log.Errorf("Illegal value for autoInject:%s, must be one of [%s,%s]. Auto injection disabled!",
-			namespacePolicy, InjectionPolicyDisabled, InjectionPolicyEnabled)
+			config.Policy, InjectionPolicyDisabled, InjectionPolicyEnabled)
 		required = false
 	case InjectionPolicyDisabled:
 		if useDefault {
@@ -396,14 +481,18 @@ func injectRequired(ignored []string, namespacePolicy InjectionPolicy, podSpec *
 	if log.DebugEnabled() {
 		// Build a log message for the annotations.
 		annotationStr := ""
-		for _, a := range annotationRegistry {
-			annotationStr += fmt.Sprintf("%s:%s ", a.name, a.getValueOrDefault(annotations, "(unset)"))
+		for name := range annotationRegistry {
+			value, ok := annotations[name]
+			if !ok {
+				value = "(unset)"
+			}
+			annotationStr += fmt.Sprintf("%s:%s ", name, value)
 		}
 
 		log.Debugf("Sidecar injection policy for %v/%v: namespacePolicy:%v useDefault:%v inject:%v required:%v %s",
 			metadata.Namespace,
-			metadata.Name,
-			namespacePolicy,
+			potentialPodName(metadata),
+			config.Policy,
 			useDefault,
 			inject,
 			required,
@@ -413,8 +502,8 @@ func injectRequired(ignored []string, namespacePolicy InjectionPolicy, podSpec *
 	return required
 }
 
-func formatDuration(in *duration.Duration) string {
-	dur, err := ptypes.Duration(in)
+func formatDuration(in *types.Duration) string {
+	dur, err := types.DurationFromProto(in)
 	if err != nil {
 		return "1s"
 	}
@@ -426,16 +515,37 @@ func isset(m map[string]string, key string) bool {
 	return ok
 }
 
-func injectionData(sidecarTemplate, version string, spec *corev1.PodSpec, metadata *metav1.ObjectMeta, proxyConfig *meshconfig.ProxyConfig, meshConfig *meshconfig.MeshConfig) (*SidecarInjectionSpec, string, error) { // nolint: lll
+func directory(filepath string) string {
+	dir, _ := path.Split(filepath)
+	return dir
+}
+
+func flippedContains(needle, haystack string) bool {
+	return strings.Contains(haystack, needle)
+}
+
+// InjectionData renders sidecarTemplate with valuesConfig.
+func InjectionData(sidecarTemplate, valuesConfig, version string, deploymentMetadata *metav1.ObjectMeta, spec *corev1.PodSpec,
+	metadata *metav1.ObjectMeta, proxyConfig *meshconfig.ProxyConfig, meshConfig *meshconfig.MeshConfig) (
+	*SidecarInjectionSpec, string, error) {
 	if err := validateAnnotations(metadata.GetAnnotations()); err != nil {
+		log.Errorf("Injection failed due to invalid annotations: %v", err)
+		return nil, "", err
+	}
+
+	values := map[string]interface{}{}
+	if err := yaml.Unmarshal([]byte(valuesConfig), &values); err != nil {
+		log.Infof("Failed to parse values config: %v [%v]\n", err, valuesConfig)
 		return nil, "", err
 	}
 
 	data := SidecarTemplateData{
-		ObjectMeta:  metadata,
-		Spec:        spec,
-		ProxyConfig: proxyConfig,
-		MeshConfig:  meshConfig,
+		DeploymentMeta: deploymentMetadata,
+		ObjectMeta:     metadata,
+		Spec:           spec,
+		ProxyConfig:    proxyConfig,
+		MeshConfig:     meshConfig,
+		Values:         values,
 	}
 
 	funcMap := template.FuncMap{
@@ -443,23 +553,42 @@ func injectionData(sidecarTemplate, version string, spec *corev1.PodSpec, metada
 		"isset":               isset,
 		"excludeInboundPort":  excludeInboundPort,
 		"includeInboundPorts": includeInboundPorts,
+		"kubevirtInterfaces":  kubevirtInterfaces,
 		"applicationPorts":    applicationPorts,
 		"annotation":          annotation,
-		"toJson":              toJson,
+		"valueOrDefault":      valueOrDefault,
+		"toJSON":              toJSON,
+		"toJson":              toJSON, // Used by, e.g. Istio 1.0.5 template sidecar-injector-configmap.yaml
+		"fromJSON":            fromJSON,
+		"toYaml":              toYaml,
+		"indent":              indent,
+		"directory":           directory,
+		"contains":            flippedContains,
 	}
 
-	var tmpl bytes.Buffer
-	temp := template.New("inject").Delims(sidecarTemplateDelimBegin, sidecarTemplateDelimEnd)
-	t := template.Must(temp.Funcs(funcMap).Parse(sidecarTemplate))
-	if err := t.Execute(&tmpl, &data); err != nil {
+	// Need to use FuncMap and SidecarTemplateData context
+	funcMap["render"] = func(template string) string {
+		bbuf, err := parseTemplate(template, funcMap, data)
+		if err != nil {
+			return ""
+		}
+
+		return bbuf.String()
+	}
+
+	bbuf, err := parseTemplate(sidecarTemplate, funcMap, data)
+	if err != nil {
 		return nil, "", err
 	}
 
 	var sic SidecarInjectionSpec
-	if err := yaml.Unmarshal(tmpl.Bytes(), &sic); err != nil {
-		log.Warnf("Failed to unmarshall template %v %s", err, string(tmpl.Bytes()))
+	if err := yaml.Unmarshal(bbuf.Bytes(), &sic); err != nil {
+		log.Warnf("Failed to unmarshall template %v %s", err, bbuf.String())
 		return nil, "", err
 	}
+
+	// set sidecar --concurrency
+	applyConcurrency(sic.Containers)
 
 	status := &SidecarInjectionStatus{Version: version}
 	for _, c := range sic.InitContainers {
@@ -481,9 +610,25 @@ func injectionData(sidecarTemplate, version string, spec *corev1.PodSpec, metada
 	return &sic, string(statusAnnotationValue), nil
 }
 
+func parseTemplate(tmplStr string, funcMap map[string]interface{}, data SidecarTemplateData) (bytes.Buffer, error) {
+	var tmpl bytes.Buffer
+	temp := template.New("inject")
+	t, err := temp.Funcs(funcMap).Parse(tmplStr)
+	if err != nil {
+		log.Infof("Failed to parse template: %v %v\n", err, tmplStr)
+		return bytes.Buffer{}, err
+	}
+	if err := t.Execute(&tmpl, &data); err != nil {
+		log.Infof("Invalid template: %v %v\n", err, tmplStr)
+		return bytes.Buffer{}, err
+	}
+
+	return tmpl, nil
+}
+
 // IntoResourceFile injects the istio proxy into the specified
 // kubernetes YAML file.
-func IntoResourceFile(sidecarTemplate string, meshconfig *meshconfig.MeshConfig, in io.Reader, out io.Writer) error {
+func IntoResourceFile(sidecarTemplate string, valuesConfig string, meshconfig *meshconfig.MeshConfig, in io.Reader, out io.Writer) error {
 	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
 	for {
 		raw, err := reader.Read()
@@ -501,7 +646,7 @@ func IntoResourceFile(sidecarTemplate string, meshconfig *meshconfig.MeshConfig,
 
 		var updated []byte
 		if err == nil {
-			outObject, err := intoObject(sidecarTemplate, meshconfig, obj) // nolint: vetshadow
+			outObject, err := intoObject(sidecarTemplate, valuesConfig, meshconfig, obj) // nolint: vetshadow
 			if err != nil {
 				return err
 			}
@@ -540,9 +685,10 @@ func fromRawToObject(raw []byte) (runtime.Object, error) {
 	return obj, nil
 }
 
-func intoObject(sidecarTemplate string, meshconfig *meshconfig.MeshConfig, in runtime.Object) (interface{}, error) {
+func intoObject(sidecarTemplate string, valuesConfig string, meshconfig *meshconfig.MeshConfig, in runtime.Object) (interface{}, error) {
 	out := in.DeepCopyObject()
 
+	var deploymentMetadata *metav1.ObjectMeta
 	var metadata *metav1.ObjectMeta
 	var podSpec *corev1.PodSpec
 
@@ -559,7 +705,7 @@ func intoObject(sidecarTemplate string, meshconfig *meshconfig.MeshConfig, in ru
 				return nil, err
 			}
 
-			r, err := intoObject(sidecarTemplate, meshconfig, obj) // nolint: vetshadow
+			r, err := intoObject(sidecarTemplate, valuesConfig, meshconfig, obj) // nolint: vetshadow
 			if err != nil {
 				return nil, err
 			}
@@ -573,15 +719,22 @@ func intoObject(sidecarTemplate string, meshconfig *meshconfig.MeshConfig, in ru
 
 	// CronJobs have JobTemplates in them, instead of Templates, so we
 	// special case them.
-	if job, ok := out.(*v2alpha1.CronJob); ok {
+	switch v := out.(type) {
+	case *v2alpha1.CronJob:
+		job := v
 		metadata = &job.Spec.JobTemplate.ObjectMeta
+		deploymentMetadata = &job.ObjectMeta
 		podSpec = &job.Spec.JobTemplate.Spec.Template.Spec
-	} else if pod, ok := out.(*corev1.Pod); ok {
+	case *corev1.Pod:
+		pod := v
 		metadata = &pod.ObjectMeta
+		deploymentMetadata = &pod.ObjectMeta
 		podSpec = &pod.Spec
-	} else {
+	default:
 		// `in` is a pointer to an Object. Dereference it.
 		outValue := reflect.ValueOf(out).Elem()
+
+		deploymentMetadata = outValue.FieldByName("ObjectMeta").Addr().Interface().(*metav1.ObjectMeta)
 
 		templateValue := outValue.FieldByName("Spec").FieldByName("Template")
 		// `Template` is defined as a pointer in some older API
@@ -600,13 +753,15 @@ func intoObject(sidecarTemplate string, meshconfig *meshconfig.MeshConfig, in ru
 	// affect the network provider within the cluster causing
 	// additional pod failures.
 	if podSpec.HostNetwork {
-		fmt.Fprintf(os.Stderr, "Skipping injection because %q has host networking enabled\n", metadata.Name)
+		fmt.Fprintf(os.Stderr, "Skipping injection because %q has host networking enabled\n", metadata.Name) //nolint: errcheck
 		return out, nil
 	}
 
-	spec, status, err := injectionData(
+	spec, status, err := InjectionData(
 		sidecarTemplate,
+		valuesConfig,
 		sidecarTemplateVersionHash(sidecarTemplate),
+		deploymentMetadata,
 		podSpec,
 		metadata,
 		meshconfig.DefaultConfig,
@@ -616,27 +771,32 @@ func intoObject(sidecarTemplate string, meshconfig *meshconfig.MeshConfig, in ru
 	}
 
 	podSpec.InitContainers = append(podSpec.InitContainers, spec.InitContainers...)
+
 	podSpec.Containers = append(podSpec.Containers, spec.Containers...)
 	podSpec.Volumes = append(podSpec.Volumes, spec.Volumes...)
+
+	podSpec.DNSConfig = spec.DNSConfig
+
+	// Modify application containers' HTTP probe after appending injected containers.
+	// Because we need to extract istio-proxy's statusPort.
+	rewriteAppHTTPProbe(metadata.Annotations, podSpec, spec)
+
+	// due to bug https://github.com/kubernetes/kubernetes/issues/57923,
+	// k8s sa jwt token volume mount file is only accessible to root user, not istio-proxy(the user that istio proxy runs as).
+	// workaround by https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
+	if meshconfig.EnableSdsTokenMount && meshconfig.SdsUdsPath != "" {
+		var grp = int64(1337)
+		podSpec.SecurityContext = &corev1.PodSecurityContext{
+			FSGroup: &grp,
+		}
+	}
 
 	if metadata.Annotations == nil {
 		metadata.Annotations = make(map[string]string)
 	}
-	metadata.Annotations[annotationStatus.name] = status
+	metadata.Annotations[annotationStatus] = status
 
 	return out, nil
-}
-
-// GenerateTemplateFromParams generates a sidecar template from the legacy injection parameters
-func GenerateTemplateFromParams(params *Params) (string, error) {
-	// Validate the parameters before we go any farther.
-	if err := params.Validate(); err != nil {
-		return "", err
-	}
-
-	var tmp bytes.Buffer
-	err := template.Must(template.New("inject").Parse(parameterizedTemplate)).Execute(&tmp, params)
-	return tmp.String(), err
 }
 
 func getPortsForContainer(container corev1.Container) []string {
@@ -669,7 +829,11 @@ func includeInboundPorts(containers []corev1.Container) string {
 	return getContainerPorts(containers, func(corev1.Container) bool { return true })
 }
 
-func toJson(m map[string]string) string {
+func kubevirtInterfaces(s string) string {
+	return s
+}
+
+func toJSON(m map[string]string) string {
 	if m == nil {
 		return "{}"
 	}
@@ -681,6 +845,38 @@ func toJson(m map[string]string) string {
 	}
 
 	return string(ba)
+}
+
+func fromJSON(j string) interface{} {
+	var m interface{}
+	err := json.Unmarshal([]byte(j), &m)
+	if err != nil {
+		log.Warnf("Unable to unmarshal %s", j)
+		return "{}"
+	}
+
+	log.Warnf("%v", m)
+	return m
+}
+
+func indent(spaces int, source string) string {
+	res := strings.Split(source, "\n")
+	for i, line := range res {
+		if i > 0 {
+			res[i] = fmt.Sprintf(fmt.Sprintf("%% %ds%%s", spaces), "", line)
+		}
+	}
+	return strings.Join(res, "\n")
+}
+
+func toYaml(value interface{}) string {
+	y, err := yaml.Marshal(value)
+	if err != nil {
+		log.Warnf("Unable to marshal %v", value)
+		return ""
+	}
+
+	return string(y)
 }
 
 func annotation(meta metav1.ObjectMeta, name string, defaultValue interface{}) string {
@@ -717,6 +913,13 @@ func excludeInboundPort(port interface{}, excludedInboundPorts string) string {
 	return strings.Join(outPorts, ",")
 }
 
+func valueOrDefault(value interface{}, defaultValue interface{}) interface{} {
+	if value == "" || value == nil {
+		return defaultValue
+	}
+	return value
+}
+
 // SidecarInjectionStatus contains basic information about the
 // injected sidecar. This includes the names of added containers and
 // volumes.
@@ -733,4 +936,14 @@ type SidecarInjectionStatus struct {
 func sidecarTemplateVersionHash(in string) string {
 	hash := sha256.Sum256([]byte(in))
 	return hex.EncodeToString(hash[:])
+}
+
+func potentialPodName(metadata *metav1.ObjectMeta) string {
+	if metadata.Name != "" {
+		return metadata.Name
+	}
+	if metadata.GenerateName != "" {
+		return metadata.GenerateName + "***** (actual name not yet known)"
+	}
+	return ""
 }

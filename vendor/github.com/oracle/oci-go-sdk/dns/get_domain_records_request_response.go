@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package dns
@@ -30,7 +30,7 @@ type GetDomainRecordsRequest struct {
 	IfModifiedSince *string `mandatory:"false" contributesTo:"header" name:"If-Modified-Since"`
 
 	// The maximum number of items to return in a page of the collection.
-	Limit *int `mandatory:"false" contributesTo:"query" name:"limit"`
+	Limit *int64 `mandatory:"false" contributesTo:"query" name:"limit"`
 
 	// The value of the `opc-next-page` response header from the previous "List" call.
 	Page *string `mandatory:"false" contributesTo:"query" name:"page"`
@@ -83,10 +83,9 @@ type GetDomainRecordsResponse struct {
 	// A list of RecordCollection instances
 	RecordCollection `presentIn:"body"`
 
-	// For pagination of a list of items. When paging through a list, if
-	// this header appears in the response, then a partial list might have
-	// been returned. Include this value as the `page` parameter for the
-	// subsequent GET request to get the next batch of items.
+	// For list pagination. When this header appears in the response, additional pages
+	// of results remain. For important details about how pagination works,
+	// see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	OpcNextPage *string `presentIn:"header" name:"opc-next-page"`
 
 	// The total number of items that match the query.
@@ -115,7 +114,7 @@ func (response GetDomainRecordsResponse) HTTPResponse() *http.Response {
 // GetDomainRecordsSortByEnum Enum with underlying type: string
 type GetDomainRecordsSortByEnum string
 
-// Set of constants representing the allowable values for GetDomainRecordsSortBy
+// Set of constants representing the allowable values for GetDomainRecordsSortByEnum
 const (
 	GetDomainRecordsSortByRtype GetDomainRecordsSortByEnum = "rtype"
 	GetDomainRecordsSortByTtl   GetDomainRecordsSortByEnum = "ttl"
@@ -126,7 +125,7 @@ var mappingGetDomainRecordsSortBy = map[string]GetDomainRecordsSortByEnum{
 	"ttl":   GetDomainRecordsSortByTtl,
 }
 
-// GetGetDomainRecordsSortByEnumValues Enumerates the set of values for GetDomainRecordsSortBy
+// GetGetDomainRecordsSortByEnumValues Enumerates the set of values for GetDomainRecordsSortByEnum
 func GetGetDomainRecordsSortByEnumValues() []GetDomainRecordsSortByEnum {
 	values := make([]GetDomainRecordsSortByEnum, 0)
 	for _, v := range mappingGetDomainRecordsSortBy {
@@ -138,7 +137,7 @@ func GetGetDomainRecordsSortByEnumValues() []GetDomainRecordsSortByEnum {
 // GetDomainRecordsSortOrderEnum Enum with underlying type: string
 type GetDomainRecordsSortOrderEnum string
 
-// Set of constants representing the allowable values for GetDomainRecordsSortOrder
+// Set of constants representing the allowable values for GetDomainRecordsSortOrderEnum
 const (
 	GetDomainRecordsSortOrderAsc  GetDomainRecordsSortOrderEnum = "ASC"
 	GetDomainRecordsSortOrderDesc GetDomainRecordsSortOrderEnum = "DESC"
@@ -149,7 +148,7 @@ var mappingGetDomainRecordsSortOrder = map[string]GetDomainRecordsSortOrderEnum{
 	"DESC": GetDomainRecordsSortOrderDesc,
 }
 
-// GetGetDomainRecordsSortOrderEnumValues Enumerates the set of values for GetDomainRecordsSortOrder
+// GetGetDomainRecordsSortOrderEnumValues Enumerates the set of values for GetDomainRecordsSortOrderEnum
 func GetGetDomainRecordsSortOrderEnumValues() []GetDomainRecordsSortOrderEnum {
 	values := make([]GetDomainRecordsSortOrderEnum, 0)
 	for _, v := range mappingGetDomainRecordsSortOrder {

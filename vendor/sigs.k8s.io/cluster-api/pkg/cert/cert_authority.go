@@ -17,11 +17,12 @@ limitations under the License.
 package cert
 
 import (
-	"fmt"
-	"github.com/golang/glog"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	"github.com/pkg/errors"
+	"k8s.io/klog"
 )
 
 type CertificateAuthority struct {
@@ -37,18 +38,18 @@ type CertificateAuthority struct {
 // read the given file and attempt to load the other associated file. For example, if the path given is /path/to/my-ca.crt,
 // then load will attempt to load the private key file at /path/to/my-ca.key.
 func Load(caPath string) (*CertificateAuthority, error) {
-	glog.Infof("Loading certificate authority from %v", caPath)
+	klog.Infof("Loading certificate authority from %v", caPath)
 	certPath, keyPath, err := certPathToCertAndKeyPaths(caPath)
 	if err != nil {
 		return nil, err
 	}
 	certMaterial, err := ioutil.ReadFile(certPath)
 	if err != nil {
-		return nil, fmt.Errorf("unable to read cert %v: %v", certPath, err)
+		return nil, errors.Wrapf(err, "unable to read cert %v", certPath)
 	}
 	keyMaterial, err := ioutil.ReadFile(keyPath)
 	if err != nil {
-		return nil, fmt.Errorf("unable to read key %v: %v", keyPath, err)
+		return nil, errors.Wrapf(err, "unable to read key %v", keyPath)
 	}
 	ca := CertificateAuthority{
 		Certificate: certMaterial,
@@ -76,14 +77,14 @@ func certPathToCertAndKeyPaths(caPath string) (string, string, error) {
 			certPath = caPath[0:len(caPath)-len(ext)] + ".crt"
 			keyPath = caPath
 		default:
-			return "", "", fmt.Errorf("unable to use certificate authority, not directory, .crt, or .key file: %v", caPath)
+			return "", "", errors.Errorf("unable to use certificate authority, not directory, .crt, or .key file: %v", caPath)
 		}
 	}
 	if _, err := os.Stat(certPath); err != nil {
-		return "", "", fmt.Errorf("unable to use certificate file: %v (%v)", certPath, err)
+		return "", "", errors.Wrapf(err, "unable to use certificate file: %v", certPath)
 	}
 	if _, err := os.Stat(keyPath); err != nil {
-		return "", "", fmt.Errorf("unable to use key file: %v (%v)", keyPath, err)
+		return "", "", errors.Wrapf(err, "unable to use key file: %v", keyPath)
 	}
 	return certPath, keyPath, err
 }

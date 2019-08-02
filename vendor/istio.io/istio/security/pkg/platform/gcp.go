@@ -17,6 +17,8 @@ package platform
 import (
 	"fmt"
 
+	"istio.io/istio/pkg/spiffe"
+
 	"cloud.google.com/go/compute/metadata"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -24,7 +26,6 @@ import (
 
 	"istio.io/istio/pkg/log"
 	cred "istio.io/istio/security/pkg/credential"
-	"istio.io/istio/security/pkg/pki/util"
 )
 
 const (
@@ -53,16 +54,6 @@ type GcpClientImpl struct {
 	// Istio CA grpc server
 	caAddr  string
 	fetcher cred.TokenFetcher
-}
-
-// NewGcpClientImpl creates a new GcpClientImpl.
-func NewGcpClientImpl(rootCert, ca string) *GcpClientImpl {
-	return &GcpClientImpl{
-		rootCertFile: rootCert,
-		caAddr:       ca,
-		// The expected token is independent of the URL of the server.
-		fetcher: &cred.GcpTokenFetcher{Aud: "grpc://istio-citadel:8060"},
-	}
 }
 
 // IsProperPlatform returns whether the client is on GCE.
@@ -95,7 +86,7 @@ func (ci *GcpClientImpl) GetServiceIdentity() (string, error) {
 		log.Errorf("Failed to get service account with error: %v", err)
 		return "", err
 	}
-	return util.GenSanURI("default", serviceAccount)
+	return spiffe.GenSpiffeURI("default", serviceAccount)
 }
 
 // GetAgentCredential returns the GCP JWT for the serivce account.

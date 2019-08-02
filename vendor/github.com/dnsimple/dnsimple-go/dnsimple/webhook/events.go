@@ -4,34 +4,33 @@ import (
 	"github.com/dnsimple/dnsimple-go/dnsimple"
 )
 
-func switchEvent(name string, payload []byte) (Event, error) {
-	var event Event
+func switchEventData(event *Event) (EventDataContainer, error) {
+	var data EventDataContainer
 
-	switch name {
+	switch event.Name {
 	case // account
-		"account.update",                  // TODO
-		"account.billing_settings_update", // TODO
-		"account.payment_details_update",  // TODO
-		"account.add_user",                // TODO
-		"account.remove_user":             // TODO
-		event = &AccountEvent{}
-	//case // certificate
-	//	"certificate.issue",
-	//	"certificate.reissue",
-	//	"certificate.remove_private_key":
-	//	event = &CertificateEvent{}
+		"account.billing_settings_update",
+		"account.update",
+		"account.user_invitation_accept",
+		"account.user_invite":
+		data = &AccountEventData{}
+	case // certificate
+		"certificate.remove_private_key":
+		data = &CertificateEventData{}
 	case // contact
 		"contact.create",
-		"contact.update",
-		"contact.delete":
-		event = &ContactEvent{}
-	//case // dnssec
-	//	"dnssec.create",
-	//	"dnssec.delete":
-	//	event = &DNSSEC{}
+		"contact.delete",
+		"contact.update":
+		data = &ContactEventData{}
+	case // dnssec
+		"dnssec.create",
+		"dnssec.delete",
+		"dnssec.rotation_complete",
+		"dnssec.rotation_start":
+		data = &DNSSECEventData{}
 	case // domain
-		"domain.auto_renewal_enable",
 		"domain.auto_renewal_disable",
+		"domain.auto_renewal_enable",
 		"domain.create",
 		"domain.delete",
 		"domain.register",
@@ -40,258 +39,182 @@ func switchEvent(name string, payload []byte) (Event, error) {
 		"domain.registrant_change",
 		"domain.resolution_disable",
 		"domain.resolution_enable",
-		"domain.token_reset",
-		"domain.transfer":
-		event = &DomainEvent{}
+		"domain.transfer": // TODO
+		data = &DomainEventData{}
 	case // email forward
 		"email_forward.create",
-		"email_forward.delete":
-		event = &EmailForwardEvent{}
-	//case // name servers
-	//	"name_server.deregister",
-	//	"name_server.register":
-	//	event = &NameServerEvent{}
-	//case // push
-	//	"push.accept",
-	//	"push.initiate",
-	//	"push.reject":
-	//	event = &PushEvent{}
-	//case // secondary dns
-	//	"secondary_dns.create",
-	//	"secondary_dns.update",
-	//	"secondary_dns.delete":
-	//	event = &SecondaryDNSEvent{}
-	//case // subscription
-	//	"subscription.migrate",
-	//	"subscription.subscribe",
-	//	"subscription.unsubscribe":
-	//	event = &SubscriptionEvent{}
-	//case // template
-	//	"template.create",
-	//	"template.delete",
-	//	"template.update":
-	//	event = &TemplateEvent{}
-	//case // template record
-	//	"template_record.create",
-	//	"template_record.delete":
-	//	event = &TemplateRecordEvent{}
-	//case // vanity
-	//	"vanity.disable",
-	//	"vanity.enable":
-	//	event = &VanityEvent{}
+		"email_forward.delete",
+		"email_forward.update":
+		data = &EmailForwardEventData{}
 	case // webhook
 		"webhook.create",
 		"webhook.delete":
-		event = &WebhookEvent{}
+		data = &WebhookEventData{}
 	case // whois privacy
 		"whois_privacy.disable",
 		"whois_privacy.enable",
 		"whois_privacy.purchase",
-		"whois_privacy.renew":
-		event = &WhoisPrivacyEvent{}
+		"whois_privacy.renew": // TODO
+		data = &WhoisPrivacyEventData{}
 	case // zone
 		"zone.create",
 		"zone.delete":
-		event = &ZoneEvent{}
+		data = &ZoneEventData{}
 	case // zone record
 		"zone_record.create",
-		"zone_record.update",
-		"zone_record.delete":
-		event = &ZoneRecordEvent{}
+		"zone_record.delete",
+		"zone_record.update":
+		data = &ZoneRecordEventData{}
 	default:
-		event = &GenericEvent{}
+		data = &GenericEventData{}
 	}
 
-	return event, event.parse(payload)
+	err := data.unmarshalEventData(event.payload)
+	return data, err
 }
 
 //
 // GenericEvent
 //
 
-// GenericEvent represents a generic event, where the data is a simple map of strings.
-type GenericEvent struct {
-	Event_Header
-	Data interface{} `json:"data"`
-}
+// GenericEventData represents the data node for a generic event, where the data is a simple map of strings.
+type GenericEventData map[string]interface{}
 
-func (e *GenericEvent) parse(payload []byte) error {
-	e.payload = payload
-	return unmashalEvent(payload, e)
-}
-
-// ParseGenericEvent unpacks the data into a GenericEvent.
-func ParseGenericEvent(e *GenericEvent, payload []byte) error {
-	return e.parse(payload)
+func (d *GenericEventData) unmarshalEventData(payload []byte) error {
+	return unmarshalEventData(payload, d)
 }
 
 //
 // AccountEvent
 //
 
-// AccountEvent represents the base event sent for an account action.
-type AccountEvent struct {
-	Event_Header
-	Data    *AccountEvent     `json:"data"`
+// AccountEventData represents the data node for an Account event.
+type AccountEventData struct {
 	Account *dnsimple.Account `json:"account"`
 }
 
-// ParseAccountEvent unpacks the data into an AccountEvent.
-func ParseAccountEvent(e *AccountEvent, payload []byte) error {
-	return e.parse(payload)
+func (d *AccountEventData) unmarshalEventData(payload []byte) error {
+	return unmarshalEventData(payload, d)
 }
 
-func (e *AccountEvent) parse(payload []byte) error {
-	e.payload, e.Data = payload, e
-	return unmashalEvent(payload, e)
+//
+// CertificateEvent
+//
+
+// CertificateEventData represents the data node for a Certificate event.
+type CertificateEventData struct {
+	Certificate *dnsimple.Certificate `json:"certificate"`
+}
+
+func (d *CertificateEventData) unmarshalEventData(payload []byte) error {
+	return unmarshalEventData(payload, d)
 }
 
 //
 // ContactEvent
 //
 
-// ContactEvent represents the base event sent for a contact action.
-type ContactEvent struct {
-	Event_Header
-	Data    *ContactEvent     `json:"data"`
+// ContactEventData represents the data node for a Contact event.
+type ContactEventData struct {
 	Contact *dnsimple.Contact `json:"contact"`
 }
 
-// ParseContactEvent unpacks the data into a ContactEvent.
-func ParseContactEvent(e *ContactEvent, payload []byte) error {
-	return e.parse(payload)
+func (d *ContactEventData) unmarshalEventData(payload []byte) error {
+	return unmarshalEventData(payload, d)
 }
 
-func (e *ContactEvent) parse(payload []byte) error {
-	e.payload, e.Data = payload, e
-	return unmashalEvent(payload, e)
+//
+// DNSSECEvent
+//
+
+// DNSSECEventData represents the data node for a DNSSEC event.
+type DNSSECEventData struct {
+	DelegationSignerRecord *dnsimple.DelegationSignerRecord `json:"delegation_signer_record"`
+	//DNSSECConfig           *dnsimple.DNSSECConfig           `json:"dnssec"`
+}
+
+func (d *DNSSECEventData) unmarshalEventData(payload []byte) error {
+	return unmarshalEventData(payload, d)
 }
 
 //
 // DomainEvent
 //
 
-// DomainEvent represents the base event sent for a domain action.
-type DomainEvent struct {
-	Event_Header
-	Data       *DomainEvent         `json:"data"`
+// DomainEventData represents the data node for a Contact event.
+type DomainEventData struct {
+	Auto       bool                 `json:"auto"`
 	Domain     *dnsimple.Domain     `json:"domain"`
 	Registrant *dnsimple.Contact    `json:"registrant"`
 	Delegation *dnsimple.Delegation `json:"name_servers"`
 }
 
-// ParseDomainEvent unpacks the payload into a DomainEvent.
-func ParseDomainEvent(e *DomainEvent, payload []byte) error {
-	return e.parse(payload)
-}
-
-func (e *DomainEvent) parse(payload []byte) error {
-	e.payload, e.Data = payload, e
-	return unmashalEvent(payload, e)
+func (d *DomainEventData) unmarshalEventData(payload []byte) error {
+	return unmarshalEventData(payload, d)
 }
 
 //
 // EmailForwardEvent
 //
 
-// EmailForwardEvent represents the base event sent for an email forward action.
-type EmailForwardEvent struct {
-	Event_Header
-	Data         *EmailForwardEvent     `json:"data"`
+// EmailForwardEventData represents the data node for a EmailForward event.
+type EmailForwardEventData struct {
 	EmailForward *dnsimple.EmailForward `json:"email_forward"`
 }
 
-// ParseDomainEvent unpacks the payload into a EmailForwardEvent.
-func ParseEmailForwardEvent(e *EmailForwardEvent, payload []byte) error {
-	return e.parse(payload)
-}
-
-func (e *EmailForwardEvent) parse(payload []byte) error {
-	e.payload, e.Data = payload, e
-	return unmashalEvent(payload, e)
+func (d *EmailForwardEventData) unmarshalEventData(payload []byte) error {
+	return unmarshalEventData(payload, d)
 }
 
 //
 // WebhookEvent
 //
 
-// WebhookEvent represents the base event sent for a webhook action.
-type WebhookEvent struct {
-	Event_Header
-	Data    *WebhookEvent     `json:"data"`
+// WebhookEventData represents the data node for a Webhook event.
+type WebhookEventData struct {
 	Webhook *dnsimple.Webhook `json:"webhook"`
 }
 
-// ParseWebhookEvent unpacks the data into a WebhookEvent.
-func ParseWebhookEvent(e *WebhookEvent, payload []byte) error {
-	return e.parse(payload)
-}
-
-func (e *WebhookEvent) parse(payload []byte) error {
-	e.payload, e.Data = payload, e
-	return unmashalEvent(payload, e)
+func (d *WebhookEventData) unmarshalEventData(payload []byte) error {
+	return unmarshalEventData(payload, d)
 }
 
 //
 // WhoisPrivacyEvent
 //
 
-// WhoisPrivacyEvent represents the base event sent for a whois privacy action.
-type WhoisPrivacyEvent struct {
-	Event_Header
-	Data         *WhoisPrivacyEvent     `json:"data"`
+// WhoisPrivacyEventData represents the data node for a WhoisPrivacy event.
+type WhoisPrivacyEventData struct {
 	Domain       *dnsimple.Domain       `json:"domain"`
 	WhoisPrivacy *dnsimple.WhoisPrivacy `json:"whois_privacy"`
 }
 
-// ParseWhoisPrivacyEvent unpacks the data into a WhoisPrivacyEvent.
-func ParseWhoisPrivacyEvent(e *WhoisPrivacyEvent, payload []byte) error {
-	return e.parse(payload)
-}
-
-func (e *WhoisPrivacyEvent) parse(payload []byte) error {
-	e.payload, e.Data = payload, e
-	return unmashalEvent(payload, e)
+func (d *WhoisPrivacyEventData) unmarshalEventData(payload []byte) error {
+	return unmarshalEventData(payload, d)
 }
 
 //
 // ZoneEvent
 //
 
-// ZoneEvent represents the base event sent for a zone action.
-type ZoneEvent struct {
-	Event_Header
-	Data *ZoneEvent     `json:"data"`
+// ZoneEventData represents the data node for a Zone event.
+type ZoneEventData struct {
 	Zone *dnsimple.Zone `json:"zone"`
 }
 
-// ParseZoneEvent unpacks the data into a ZoneEvent.
-func ParseZoneEvent(e *ZoneEvent, payload []byte) error {
-	return e.parse(payload)
-}
-
-func (e *ZoneEvent) parse(payload []byte) error {
-	e.payload, e.Data = payload, e
-	return unmashalEvent(payload, e)
+func (d *ZoneEventData) unmarshalEventData(payload []byte) error {
+	return unmarshalEventData(payload, d)
 }
 
 //
 // ZoneRecordEvent
 //
 
-// ZoneRecordEvent represents the base event sent for a zone record action.
-type ZoneRecordEvent struct {
-	Event_Header
-	Data       *ZoneRecordEvent     `json:"data"`
+// ZoneRecordEventData represents the data node for a ZoneRecord event.
+type ZoneRecordEventData struct {
 	ZoneRecord *dnsimple.ZoneRecord `json:"zone_record"`
 }
 
-// ParseZoneRecordEvent unpacks the data into a ZoneRecordEvent.
-func ParseZoneRecordEvent(e *ZoneRecordEvent, payload []byte) error {
-	return e.parse(payload)
-}
-
-func (e *ZoneRecordEvent) parse(payload []byte) error {
-	e.payload, e.Data = payload, e
-	return unmashalEvent(payload, e)
+func (d *ZoneRecordEventData) unmarshalEventData(payload []byte) error {
+	return unmarshalEventData(payload, d)
 }

@@ -8,11 +8,22 @@ import (
 	"github.com/vincent-petithory/dataurl"
 
 	"github.com/openshift/installer/pkg/types"
+	baremetaltypes "github.com/openshift/installer/pkg/types/baremetal"
 )
 
 // pointerIgnitionConfig generates a config which references the remote config
 // served by the machine config server.
 func pointerIgnitionConfig(installConfig *types.InstallConfig, rootCA []byte, role string) *ignition.Config {
+	var ignitionHost string
+	switch installConfig.Platform.Name() {
+	case baremetaltypes.Name:
+		// Baremetal needs to point directly at the VIP because we don't have a
+		// way to configure DNS before Ignition runs.
+		ignitionHost = fmt.Sprintf("%s:22623", installConfig.BareMetal.APIVIP)
+	default:
+		ignitionHost = fmt.Sprintf("api-int.%s:22623", installConfig.ClusterDomain())
+	}
+
 	return &ignition.Config{
 		Ignition: ignition.Ignition{
 			Version: ignition.MaxVersion.String(),
@@ -21,7 +32,7 @@ func pointerIgnitionConfig(installConfig *types.InstallConfig, rootCA []byte, ro
 					Source: func() *url.URL {
 						return &url.URL{
 							Scheme: "https",
-							Host:   fmt.Sprintf("%s-api.%s:49500", installConfig.ObjectMeta.Name, installConfig.BaseDomain),
+							Host:   ignitionHost,
 							Path:   fmt.Sprintf("/config/%s", role),
 						}
 					}().String(),
@@ -34,13 +45,6 @@ func pointerIgnitionConfig(installConfig *types.InstallConfig, rootCA []byte, ro
 					}},
 				},
 			},
-		},
-		// XXX: Remove this once MCO supports injecting SSH keys.
-		Passwd: ignition.Passwd{
-			Users: []ignition.PasswdUser{{
-				Name:              "core",
-				SSHAuthorizedKeys: []ignition.SSHAuthorizedKey{ignition.SSHAuthorizedKey(installConfig.Admin.SSHKey)},
-			}},
 		},
 	}
 }

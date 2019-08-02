@@ -42,7 +42,7 @@ func (a *Worker) Generate(dependencies asset.Parents) error {
 
 	data, err := json.Marshal(a.Config)
 	if err != nil {
-		return errors.Wrap(err, "failed to get InstallConfig from parents")
+		return errors.Wrap(err, "failed to marshal Ignition config")
 	}
 	a.File = &asset.File{
 		Filename: workerIgnFilename,
@@ -77,7 +77,7 @@ func (a *Worker) Load(f asset.FileFetcher) (found bool, err error) {
 
 	config := &igntypes.Config{}
 	if err := json.Unmarshal(file.Data, config); err != nil {
-		return false, errors.Wrapf(err, "failed to unmarshal")
+		return false, errors.Wrapf(err, "failed to unmarshal %s", workerIgnFilename)
 	}
 
 	a.File, a.Config = file, config

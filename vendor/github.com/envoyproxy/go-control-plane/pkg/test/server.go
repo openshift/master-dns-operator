@@ -18,13 +18,13 @@ package test
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 
-	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 
-	"github.com/envoyproxy/go-control-plane/envoy/api/v2"
+	v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	accesslog "github.com/envoyproxy/go-control-plane/envoy/service/accesslog/v2"
 	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v2"
@@ -53,22 +53,19 @@ type echo struct{}
 func (h echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/text")
 	if _, err := w.Write([]byte(Hello)); err != nil {
-		log.Error(err)
+		log.Println(err)
 	}
 }
 
 // RunHTTP opens a simple listener on the port.
 func RunHTTP(ctx context.Context, upstreamPort uint) {
-	log.WithFields(log.Fields{"port": upstreamPort}).Info("upstream listening HTTP/1.1")
+	log.Printf("upstream listening HTTP/1.1i on %d\n", upstreamPort)
 	server := &http.Server{Addr: fmt.Sprintf(":%d", upstreamPort), Handler: echo{}}
 	go func() {
 		if err := server.ListenAndServe(); err != nil {
-			log.Error(err)
+			log.Println(err)
 		}
 	}()
-	if err := server.Shutdown(ctx); err != nil {
-		log.Error(err)
-	}
 }
 
 // RunAccessLogServer starts an accesslog service.
@@ -76,15 +73,15 @@ func RunAccessLogServer(ctx context.Context, als *AccessLogService, port uint) {
 	grpcServer := grpc.NewServer()
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
-		log.WithError(err).Fatal("failed to listen")
+		log.Fatal(err)
 	}
 
 	accesslog.RegisterAccessLogServiceServer(grpcServer, als)
-	log.WithFields(log.Fields{"port": port}).Info("access log server listening")
+	log.Printf("access log server listening on %d\n", port)
 
 	go func() {
 		if err = grpcServer.Serve(lis); err != nil {
-			log.Error(err)
+			log.Println(err)
 		}
 	}()
 	<-ctx.Done()
@@ -106,7 +103,7 @@ func RunManagementServer(ctx context.Context, server xds.Server, port uint) {
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
-		log.WithError(err).Fatal("failed to listen")
+		log.Fatal(err)
 	}
 
 	// register services
@@ -115,11 +112,12 @@ func RunManagementServer(ctx context.Context, server xds.Server, port uint) {
 	v2.RegisterClusterDiscoveryServiceServer(grpcServer, server)
 	v2.RegisterRouteDiscoveryServiceServer(grpcServer, server)
 	v2.RegisterListenerDiscoveryServiceServer(grpcServer, server)
+	discovery.RegisterSecretDiscoveryServiceServer(grpcServer, server)
 
-	log.WithFields(log.Fields{"port": port}).Info("management server listening")
+	log.Printf("management server listening on %d\n", port)
 	go func() {
 		if err = grpcServer.Serve(lis); err != nil {
-			log.Error(err)
+			log.Println(err)
 		}
 	}()
 	<-ctx.Done()
@@ -129,14 +127,11 @@ func RunManagementServer(ctx context.Context, server xds.Server, port uint) {
 
 // RunManagementGateway starts an HTTP gateway to an xDS server.
 func RunManagementGateway(ctx context.Context, srv xds.Server, port uint) {
-	log.WithFields(log.Fields{"port": port}).Info("gateway listening HTTP/1.1")
+	log.Printf("gateway listening HTTP/1.1 on %d\n", port)
 	server := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: &xds.HTTPGateway{Server: srv}}
 	go func() {
 		if err := server.ListenAndServe(); err != nil {
-			log.Error(err)
+			log.Println(err)
 		}
 	}()
-	if err := server.Shutdown(ctx); err != nil {
-		log.Error(err)
-	}
 }

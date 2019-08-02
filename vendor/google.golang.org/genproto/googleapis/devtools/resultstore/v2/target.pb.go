@@ -5,8 +5,9 @@ package resultstore
 
 import (
 	fmt "fmt"
-	proto "github.com/golang/protobuf/proto"
 	math "math"
+
+	proto "github.com/golang/protobuf/proto"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -18,7 +19,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 // These correspond to the suffix of the rule name. Eg cc_test has type TEST.
 type TargetType int32
@@ -113,7 +114,7 @@ func (TestSize) EnumDescriptor() ([]byte, []int) {
 // the data.
 type Target struct {
 	// The resource name.  Its format must be:
-	// invocations/${INVOCATION_ID}/targets/${TARGET_ID}
+	// invocations/${INVOCATION_ID}/targets/${url_encode(TARGET_ID)}
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// The resource ID components that identify the Target. They must match the
 	// resource name after proper encoding.

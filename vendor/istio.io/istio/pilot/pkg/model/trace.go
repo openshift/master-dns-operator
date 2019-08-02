@@ -15,30 +15,19 @@
 package model
 
 import (
-	"os"
-	"strconv"
+	"istio.io/istio/pkg/features/pilot"
 )
 
 // Default trace sampling, if not provided in env var.
 const traceSamplingDefault = 100.0
 
 var (
-	// Env var PILOT_TRACE_SAMPLING sets mesh-wide trace sampling
-	// percentage, should be 0.0 - 100.0 Precision to 0.01
-	traceSamplingEnv = os.Getenv("PILOT_TRACE_SAMPLING")
-	traceSampling    = getTraceSampling()
+	traceSampling = getTraceSampling()
 )
 
 // Return trace sampling if set correctly, or default if not.
 func getTraceSampling() float64 {
-	if traceSamplingEnv == "" {
-		return traceSamplingDefault
-	}
-	f, err := strconv.ParseFloat(traceSamplingEnv, 64)
-	if err != nil {
-		log.Warnf("PILOT_TRACE_SAMPLING not set to a number: %v", traceSamplingEnv)
-		return traceSamplingDefault
-	}
+	f := pilot.TraceSampling
 	if f < 0.0 || f > 100.0 {
 		log.Warnf("PILOT_TRACE_SAMPLING out of range: %v", f)
 		return traceSamplingDefault

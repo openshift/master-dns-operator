@@ -70,10 +70,6 @@ import (
 // When the pointer to lruWrapper is finalized, this tells us to go ahead and stop the
 // evicter goroutine, which allows the lruCache instance to be collected and everything
 // ends well.
-//
-// A potential idea for the future would be to defer LRU ordering changes from being
-// done inline in Get and instead being deferred to a background goroutine. This could
-// allow Get to be read-only which would allow more concurrency.
 
 // See use of SetFinalizer below for an explanation of this weird composition
 type lruWrapper struct {
@@ -81,7 +77,7 @@ type lruWrapper struct {
 }
 
 type lruCache struct {
-	sync.Mutex
+	sync.RWMutex
 	entries           []lruEntry            // allocate once, not resizable
 	sentinel          *lruEntry             // direct pointer to entries[0] to avoid bounds checking
 	lookup            map[interface{}]int32 // keys => entry index
@@ -133,14 +129,14 @@ func NewLRU(defaultExpiration time.Duration, evictionInterval time.Duration, max
 		c.entries[i].prev = i - 1
 		c.entries[i].expiration = math.MaxInt64
 	}
-	c.sentinel = &c.entries[0]
+	c.sentinel = &c.entries[sentinelIndex]
 
 	// finish things off, making the list circular
 	c.entries[maxEntries].next = sentinelIndex
 	c.sentinel.prev = maxEntries
 
+	c.baseTimeNanos = time.Now().UnixNano()
 	if evictionInterval > 0 {
-		c.baseTimeNanos = time.Now().UTC().UnixNano()
 		c.stopEvicter = make(chan bool, 1)
 		c.evicterTerminated.Add(1)
 		go c.evicter(evictionInterval)
@@ -180,7 +176,7 @@ func (c *lruCache) evictExpired(t time.Time) {
 	// sampled in the Set call as calling time.Now() is relatively expensive.
 	// Doing it here provides enough precision for our needs and tends to have
 	// much lower call frequency.
-	n := t.UTC().UnixNano()
+	n := t.UnixNano()
 	atomic.StoreInt64(&c.baseTimeNanos, n)
 
 	for i := int32(1); i < int32(len(c.entries)); i++ {
@@ -248,9 +244,9 @@ func (c *lruCache) SetWithExpiration(key interface{}, value interface{}, expirat
 	ent.value = value
 	ent.expiration = exp
 
-	c.Unlock()
-
 	atomic.AddUint64(&c.stats.Writes, 1)
+
+	c.Unlock()
 }
 
 func (c *lruCache) Get(key interface{}) (interface{}, bool) {
@@ -308,6 +304,8 @@ func (c *lruCache) remove(index int32) {
 }
 
 func (c *lruCache) Stats() Stats {
+	c.RLock()
+	defer c.RUnlock()
 	return c.stats
 }
 

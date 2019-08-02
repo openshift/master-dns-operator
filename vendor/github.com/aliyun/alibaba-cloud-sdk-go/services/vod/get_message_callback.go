@@ -76,10 +76,12 @@ func (client *Client) GetMessageCallbackWithCallback(request *GetMessageCallback
 // GetMessageCallbackRequest is the request struct for api GetMessageCallback
 type GetMessageCallbackRequest struct {
 	*requests.RpcRequest
-	ResourceOwnerId      string `position:"Query" name:"ResourceOwnerId"`
-	ResourceOwnerAccount string `position:"Query" name:"ResourceOwnerAccount"`
-	OwnerAccount         string `position:"Query" name:"OwnerAccount"`
-	OwnerId              string `position:"Query" name:"OwnerId"`
+	ResourceOwnerId      string           `position:"Query" name:"ResourceOwnerId"`
+	ResourceOwnerAccount string           `position:"Query" name:"ResourceOwnerAccount"`
+	OwnerAccount         string           `position:"Query" name:"OwnerAccount"`
+	AppId                string           `position:"Query" name:"AppId"`
+	ResourceRealOwnerId  requests.Integer `position:"Query" name:"ResourceRealOwnerId"`
+	OwnerId              string           `position:"Query" name:"OwnerId"`
 }
 
 // GetMessageCallbackResponse is the response struct for api GetMessageCallback

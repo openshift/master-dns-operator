@@ -36,16 +36,6 @@ func NewController(cs model.ConfigStore) model.ConfigStoreCache {
 	return out
 }
 
-// NewBufferedController return an implementation of model.ConfigStoreCache. This differs from NewController in that it
-// allows for specifying the size of the internal event buffer.
-func NewBufferedController(cs model.ConfigStore, bufferSize int) model.ConfigStoreCache {
-	out := &controller{
-		configStore: cs,
-		monitor:     NewBufferedMonitor(cs, bufferSize),
-	}
-	return out
-}
-
 func (c *controller) RegisterEventHandler(typ string, f func(model.Config, model.Event)) {
 	c.monitor.AppendEventHandler(typ, f)
 }
@@ -63,7 +53,7 @@ func (c *controller) ConfigDescriptor() model.ConfigDescriptor {
 	return c.configStore.ConfigDescriptor()
 }
 
-func (c *controller) Get(typ, key, namespace string) (*model.Config, bool) {
+func (c *controller) Get(typ, key, namespace string) *model.Config {
 	return c.configStore.Get(typ, key, namespace)
 }
 
@@ -88,7 +78,7 @@ func (c *controller) Update(config model.Config) (newRevision string, err error)
 }
 
 func (c *controller) Delete(typ, key, namespace string) (err error) {
-	if config, exists := c.Get(typ, key, namespace); exists {
+	if config := c.Get(typ, key, namespace); config != nil {
 		if err = c.configStore.Delete(typ, key, namespace); err == nil {
 			c.monitor.ScheduleProcessEvent(ConfigEvent{
 				config: *config,

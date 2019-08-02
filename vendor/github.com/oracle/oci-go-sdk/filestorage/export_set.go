@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // File Storage Service API
@@ -14,6 +14,7 @@ import (
 
 // ExportSet A set of file systems to export through one or more mount
 // targets. Composed of zero or more export resources.
+// **Warning:** Oracle recommends that you avoid using any confidential information when you supply string values using the API.
 type ExportSet struct {
 
 	// The OCID of the compartment that contains the export set.
@@ -52,9 +53,9 @@ type ExportSet struct {
 	// `maxFsStatBytes` minus the metered size of the file
 	// system. If the metered size is larger than `maxFsStatBytes`,
 	// then `fbytes` and `abytes` will both be '0'.
-	MaxFsStatBytes *int `mandatory:"false" json:"maxFsStatBytes"`
+	MaxFsStatBytes *int64 `mandatory:"false" json:"maxFsStatBytes"`
 
-	// Controls the maximum `ffiles`, `ffiles`, and `afiles`
+	// Controls the maximum `tfiles`, `ffiles`, and `afiles`
 	// values reported by `NFS FSSTAT` calls through any associated
 	// mount targets. This is an advanced feature. For most
 	// applications, use the default value. The
@@ -63,7 +64,7 @@ type ExportSet struct {
 	// `maxFsStatFiles` minus the metered size of the file
 	// system. If the metered size is larger than `maxFsStatFiles`,
 	// then `ffiles` and `afiles` will both be '0'.
-	MaxFsStatFiles *int `mandatory:"false" json:"maxFsStatFiles"`
+	MaxFsStatFiles *int64 `mandatory:"false" json:"maxFsStatFiles"`
 }
 
 func (m ExportSet) String() string {
@@ -73,7 +74,7 @@ func (m ExportSet) String() string {
 // ExportSetLifecycleStateEnum Enum with underlying type: string
 type ExportSetLifecycleStateEnum string
 
-// Set of constants representing the allowable values for ExportSetLifecycleState
+// Set of constants representing the allowable values for ExportSetLifecycleStateEnum
 const (
 	ExportSetLifecycleStateCreating ExportSetLifecycleStateEnum = "CREATING"
 	ExportSetLifecycleStateActive   ExportSetLifecycleStateEnum = "ACTIVE"
@@ -88,7 +89,7 @@ var mappingExportSetLifecycleState = map[string]ExportSetLifecycleStateEnum{
 	"DELETED":  ExportSetLifecycleStateDeleted,
 }
 
-// GetExportSetLifecycleStateEnumValues Enumerates the set of values for ExportSetLifecycleState
+// GetExportSetLifecycleStateEnumValues Enumerates the set of values for ExportSetLifecycleStateEnum
 func GetExportSetLifecycleStateEnumValues() []ExportSetLifecycleStateEnum {
 	values := make([]ExportSetLifecycleStateEnum, 0)
 	for _, v := range mappingExportSetLifecycleState {

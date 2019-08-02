@@ -17,7 +17,9 @@ limitations under the License.
 package provider
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -39,6 +41,8 @@ type InfobloxConfig struct {
 	Version      string
 	SSLVerify    bool
 	DryRun       bool
+	View         string
+	MaxResults   int
 }
 
 // InfobloxProvider implements the DNS provider for Infoblox.
@@ -46,12 +50,40 @@ type InfobloxProvider struct {
 	client       ibclient.IBConnector
 	domainFilter DomainFilter
 	zoneIDFilter ZoneIDFilter
+	view         string
 	dryRun       bool
 }
 
 type infobloxRecordSet struct {
 	obj ibclient.IBObject
 	res interface{}
+}
+
+// MaxResultsRequestBuilder implements a HttpRequestBuilder which sets the
+// _max_results query parameter on all get requests
+type MaxResultsRequestBuilder struct {
+	maxResults int
+	ibclient.WapiRequestBuilder
+}
+
+// NewMaxResultsRequestBuilder returns a MaxResultsRequestBuilder which adds
+// _max_results query parameter to all GET requests
+func NewMaxResultsRequestBuilder(maxResults int) *MaxResultsRequestBuilder {
+	return &MaxResultsRequestBuilder{
+		maxResults: maxResults,
+	}
+}
+
+// BuildRequest prepares the api request. it uses BuildRequest of
+// WapiRequestBuilder and then add the _max_requests parameter
+func (mrb *MaxResultsRequestBuilder) BuildRequest(t ibclient.RequestType, obj ibclient.IBObject, ref string, queryParams ibclient.QueryParams) (req *http.Request, err error) {
+	req, err = mrb.WapiRequestBuilder.BuildRequest(t, obj, ref, queryParams)
+	if req.Method == "GET" {
+		query := req.URL.Query()
+		query.Set("_max_results", strconv.Itoa(mrb.maxResults))
+		req.URL.RawQuery = query.Encode()
+	}
+	return
 }
 
 // NewInfobloxProvider creates a new Infoblox provider.
@@ -73,7 +105,15 @@ func NewInfobloxProvider(infobloxConfig InfobloxConfig) (*InfobloxProvider, erro
 		httpPoolConnections,
 	)
 
-	requestBuilder := &ibclient.WapiRequestBuilder{}
+	var requestBuilder ibclient.HttpRequestBuilder
+	if infobloxConfig.MaxResults != 0 {
+		// use our own HttpRequestBuilder which sets _max_results paramter on GET requests
+		requestBuilder = NewMaxResultsRequestBuilder(infobloxConfig.MaxResults)
+	} else {
+		// use the default HttpRequestBuilder of the infoblox client
+		requestBuilder = &ibclient.WapiRequestBuilder{}
+	}
+
 	requestor := &ibclient.WapiHttpRequestor{}
 
 	client, err := ibclient.NewConnector(hostConfig, transportConfig, requestBuilder, requestor)
@@ -87,6 +127,7 @@ func NewInfobloxProvider(infobloxConfig InfobloxConfig) (*InfobloxProvider, erro
 		domainFilter: infobloxConfig.DomainFilter,
 		zoneIDFilter: infobloxConfig.ZoneIDFilter,
 		dryRun:       infobloxConfig.DryRun,
+		view:         infobloxConfig.View,
 	}
 
 	return provider, nil
@@ -105,6 +146,7 @@ func (p *InfobloxProvider) Records() (endpoints []*endpoint.Endpoint, err error)
 		objA := ibclient.NewRecordA(
 			ibclient.RecordA{
 				Zone: zone.Fqdn,
+				View: p.view,
 			},
 		)
 		err = p.client.GetObject(objA, "", &resA)
@@ -120,6 +162,7 @@ func (p *InfobloxProvider) Records() (endpoints []*endpoint.Endpoint, err error)
 		objH := ibclient.NewHostRecord(
 			ibclient.HostRecord{
 				Zone: zone.Fqdn,
+				View: p.view,
 			},
 		)
 		err = p.client.GetObject(objH, "", &resH)
@@ -136,6 +179,7 @@ func (p *InfobloxProvider) Records() (endpoints []*endpoint.Endpoint, err error)
 		objC := ibclient.NewRecordCNAME(
 			ibclient.RecordCNAME{
 				Zone: zone.Fqdn,
+				View: p.view,
 			},
 		)
 		err = p.client.GetObject(objC, "", &resC)
@@ -150,6 +194,7 @@ func (p *InfobloxProvider) Records() (endpoints []*endpoint.Endpoint, err error)
 		objT := ibclient.NewRecordTXT(
 			ibclient.RecordTXT{
 				Zone: zone.Fqdn,
+				View: p.view,
 			},
 		)
 		err = p.client.GetObject(objT, "", &resT)
@@ -170,7 +215,7 @@ func (p *InfobloxProvider) Records() (endpoints []*endpoint.Endpoint, err error)
 }
 
 // ApplyChanges applies the given changes.
-func (p *InfobloxProvider) ApplyChanges(changes *plan.Changes) error {
+func (p *InfobloxProvider) ApplyChanges(ctx context.Context, changes *plan.Changes) error {
 	zones, err := p.zones()
 	if err != nil {
 		return err
@@ -215,7 +260,7 @@ func (p *InfobloxProvider) mapChanges(zones []ibclient.ZoneAuth, changes *plan.C
 	mapChange := func(changeMap infobloxChangeMap, change *endpoint.Endpoint) {
 		zone := p.findZone(zones, change.DNSName)
 		if zone == nil {
-			logrus.Infof("Ignoring changes to '%s' because a suitable Infoblox DNS zone was not found.", change.DNSName)
+			logrus.Debugf("Ignoring changes to '%s' because a suitable Infoblox DNS zone was not found.", change.DNSName)
 			return
 		}
 		// Ensure the record type is suitable
@@ -261,6 +306,7 @@ func (p *InfobloxProvider) recordSet(ep *endpoint.Endpoint, getObject bool) (rec
 			ibclient.RecordA{
 				Name:     ep.DNSName,
 				Ipv4Addr: ep.Targets[0],
+				View:     p.view,
 			},
 		)
 		if getObject {
@@ -279,6 +325,7 @@ func (p *InfobloxProvider) recordSet(ep *endpoint.Endpoint, getObject bool) (rec
 			ibclient.RecordCNAME{
 				Name:      ep.DNSName,
 				Canonical: ep.Targets[0],
+				View:      p.view,
 			},
 		)
 		if getObject {
@@ -302,6 +349,7 @@ func (p *InfobloxProvider) recordSet(ep *endpoint.Endpoint, getObject bool) (rec
 			ibclient.RecordTXT{
 				Name: ep.DNSName,
 				Text: ep.Targets[0],
+				View: p.view,
 			},
 		)
 		if getObject {

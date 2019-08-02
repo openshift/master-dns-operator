@@ -9,17 +9,26 @@ import (
 
 	"github.com/openshift/installer/pkg/asset"
 	awsconfig "github.com/openshift/installer/pkg/asset/installconfig/aws"
+	azureconfig "github.com/openshift/installer/pkg/asset/installconfig/azure"
+	gcpconfig "github.com/openshift/installer/pkg/asset/installconfig/gcp"
 	libvirtconfig "github.com/openshift/installer/pkg/asset/installconfig/libvirt"
 	openstackconfig "github.com/openshift/installer/pkg/asset/installconfig/openstack"
+	vsphereconfig "github.com/openshift/installer/pkg/asset/installconfig/vsphere"
 	"github.com/openshift/installer/pkg/types"
 	"github.com/openshift/installer/pkg/types/aws"
+	"github.com/openshift/installer/pkg/types/azure"
+	"github.com/openshift/installer/pkg/types/gcp"
 	"github.com/openshift/installer/pkg/types/libvirt"
+	"github.com/openshift/installer/pkg/types/none"
 	"github.com/openshift/installer/pkg/types/openstack"
+	"github.com/openshift/installer/pkg/types/vsphere"
 )
 
 // Platform is an asset that queries the user for the platform on which to install
 // the cluster.
-type platform types.Platform
+type platform struct {
+	types.Platform
+}
 
 var _ asset.Asset = (*platform)(nil)
 
@@ -41,13 +50,30 @@ func (a *platform) Generate(asset.Parents) error {
 		if err != nil {
 			return err
 		}
+	case libvirt.Name:
+		a.Libvirt, err = libvirtconfig.Platform()
+		if err != nil {
+			return err
+		}
+	case azure.Name:
+		a.Azure, err = azureconfig.Platform()
+		if err != nil {
+			return err
+		}
+	case gcp.Name:
+		a.GCP, err = gcpconfig.Platform()
+		if err != nil {
+			return err
+		}
+	case none.Name:
+		a.None = &none.Platform{}
 	case openstack.Name:
 		a.OpenStack, err = openstackconfig.Platform()
 		if err != nil {
 			return err
 		}
-	case libvirt.Name:
-		a.Libvirt, err = libvirtconfig.Platform()
+	case vsphere.Name:
+		a.VSphere, err = vsphereconfig.Platform()
 		if err != nil {
 			return err
 		}
@@ -63,13 +89,13 @@ func (a *platform) Name() string {
 	return "Platform"
 }
 
-func (a *platform) queryUserForPlatform() (string, error) {
-	return asset.GenerateUserProvidedAsset(
-		"Platform",
-		&survey.Question{
+func (a *platform) queryUserForPlatform() (platform string, err error) {
+	err = survey.Ask([]*survey.Question{
+		{
 			Prompt: &survey.Select{
 				Message: "Platform",
 				Options: types.PlatformNames,
+				Help:    "The platform on which the cluster will run.  For a full list of platforms, including those not supported by this wizard, see https://github.com/openshift/installer",
 			},
 			Validate: survey.ComposeValidators(survey.Required, func(ans interface{}) error {
 				choice := ans.(string)
@@ -80,6 +106,10 @@ func (a *platform) queryUserForPlatform() (string, error) {
 				return nil
 			}),
 		},
-		"OPENSHIFT_INSTALL_PLATFORM",
-	)
+	}, &platform)
+	return
+}
+
+func (a *platform) CurrentName() string {
+	return a.Platform.Name()
 }

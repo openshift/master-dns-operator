@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package objectstorage
@@ -11,7 +11,7 @@ import (
 // DeletePreauthenticatedRequestRequest wrapper for the DeletePreauthenticatedRequest operation
 type DeletePreauthenticatedRequestRequest struct {
 
-	// The top-level namespace used for the request.
+	// The Object Storage namespace used for the request.
 	NamespaceName *string `mandatory:"true" contributesTo:"path" name:"namespaceName"`
 
 	// The name of the bucket. Avoid entering confidential information.

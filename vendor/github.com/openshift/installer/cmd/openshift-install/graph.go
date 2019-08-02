@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"reflect"
+	"regexp"
 
 	"github.com/awalterschulze/gographviz"
 	"github.com/sirupsen/logrus"
@@ -24,6 +25,7 @@ func newGraphCmd() *cobra.Command {
 		Use:   "graph",
 		Short: "Outputs the internal dependency graph for installer",
 		Long:  "",
+		Args:  cobra.ExactArgs(0),
 		RunE:  runGraphCmd,
 	}
 	cmd.PersistentFlags().StringVar(&graphOpts.outputFile, "output-file", "", "file where the graph is written, if empty prints the graph to Stdout.")
@@ -46,6 +48,18 @@ func runGraphCmd(cmd *cobra.Command, args []string) error {
 		for _, dep := range t.assets {
 			addEdge(g, name, dep)
 		}
+	}
+
+	g.AddAttr("G", "rankdir", "LR")
+	r := regexp.MustCompile(`[. ]`)
+	for _, node := range g.Nodes.Nodes {
+		cluster := r.Split(node.Name, -1)[0][1:]
+		subgraphName := "cluster_" + cluster
+		_, ok := g.SubGraphs.SubGraphs[subgraphName]
+		if !ok {
+			g.AddSubGraph("G", subgraphName, map[string]string{"label": cluster})
+		}
+		g.AddNode(subgraphName, node.Name, nil)
 	}
 
 	out := os.Stdout

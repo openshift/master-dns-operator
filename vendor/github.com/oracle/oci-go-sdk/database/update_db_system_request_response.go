@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package database
@@ -11,10 +11,10 @@ import (
 // UpdateDbSystemRequest wrapper for the UpdateDbSystem operation
 type UpdateDbSystemRequest struct {
 
-	// The DB System OCID (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/identifiers.htm).
+	// The DB system OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm).
 	DbSystemId *string `mandatory:"true" contributesTo:"path" name:"dbSystemId"`
 
-	// Request to update the properties of a DB System.
+	// Request to update the properties of a DB system.
 	UpdateDbSystemDetails `contributesTo:"body"`
 
 	// For optimistic concurrency control. In the PUT or DELETE call for a resource, set the `if-match`

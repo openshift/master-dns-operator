@@ -33,17 +33,14 @@ func configMap(namespace, name string, data genericData) *configurationObject {
 	}
 }
 
-// Converts a platform to the cloudProvider that k8s understands
-func tectonicCloudProvider(platform types.Platform) string {
-	if platform.AWS != nil {
-		return "aws"
-	}
-	if platform.Libvirt != nil {
-		return "libvirt"
-	}
-	return ""
+func getAPIServerURL(ic *types.InstallConfig) string {
+	return fmt.Sprintf("https://api.%s:6443", ic.ClusterDomain())
 }
 
-func getAPIServerURL(ic *types.InstallConfig) string {
-	return fmt.Sprintf("https://%s-api.%s:6443", ic.ObjectMeta.Name, ic.BaseDomain)
+func getInternalAPIServerURL(ic *types.InstallConfig) string {
+	return fmt.Sprintf("https://api-int.%s:6443", ic.ClusterDomain())
+}
+
+func getEtcdDiscoveryDomain(ic *types.InstallConfig) string {
+	return ic.ClusterDomain()
 }

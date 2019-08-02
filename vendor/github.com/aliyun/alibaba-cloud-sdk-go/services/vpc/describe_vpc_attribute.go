@@ -94,11 +94,13 @@ type DescribeVpcAttributeResponse struct {
 	VpcName            string                               `json:"VpcName" xml:"VpcName"`
 	CreationTime       string                               `json:"CreationTime" xml:"CreationTime"`
 	CidrBlock          string                               `json:"CidrBlock" xml:"CidrBlock"`
+	Ipv6CidrBlock      string                               `json:"Ipv6CidrBlock" xml:"Ipv6CidrBlock"`
 	VRouterId          string                               `json:"VRouterId" xml:"VRouterId"`
 	Description        string                               `json:"Description" xml:"Description"`
 	IsDefault          bool                                 `json:"IsDefault" xml:"IsDefault"`
 	ClassicLinkEnabled bool                                 `json:"ClassicLinkEnabled" xml:"ClassicLinkEnabled"`
 	ResourceGroupId    string                               `json:"ResourceGroupId" xml:"ResourceGroupId"`
+	NetworkAclNum      string                               `json:"NetworkAclNum" xml:"NetworkAclNum"`
 	VSwitchIds         VSwitchIdsInDescribeVpcAttribute     `json:"VSwitchIds" xml:"VSwitchIds"`
 	UserCidrs          UserCidrsInDescribeVpcAttribute      `json:"UserCidrs" xml:"UserCidrs"`
 	AssociatedCens     AssociatedCensInDescribeVpcAttribute `json:"AssociatedCens" xml:"AssociatedCens"`
